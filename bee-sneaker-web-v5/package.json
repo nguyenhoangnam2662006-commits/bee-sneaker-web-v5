@@ -1,0 +1,22 @@
+{
+  "name": "bee-sneaker-web",
+  "version": "2.0.0",
+  "description": "Bee Sneaker - shop owner and CTV order management with PostgreSQL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=20 <25"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^10.0.0",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "multer": "^2.0.2",
+    "pg": "^8.13.1"
+  }
+}
