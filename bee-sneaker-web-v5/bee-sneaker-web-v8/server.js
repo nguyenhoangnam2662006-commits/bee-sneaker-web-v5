@@ -1,0 +1,350 @@
+const express = require('express');
+const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
+const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const path = require('path');
+const crypto = require('crypto');
+const compression = require('compression');
+const helmet = require('helmet');
+const { rateLimit } = require('express-rate-limit');
+const db = require('./src/db');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const isProd = process.env.NODE_ENV === 'production';
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto
+  .createHash('sha256')
+  .update(`${process.env.DATABASE_URL || 'local'}:bee-sneaker-session-v8`)
+  .digest('hex');
+
+if (isProd && !process.env.SESSION_SECRET) {
+  console.warn('Khuyến nghị: thêm SESSION_SECRET riêng trong Render Environment để tăng bảo mật session.');
+}
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_, file, cb) => {
+    if (/^image\/(jpeg|png|webp|gif)$/.test(file.mimetype)) return cb(null, true);
+    cb(new Error('Chỉ chấp nhận ảnh JPG, PNG, WEBP hoặc GIF.'));
+  }
+});
+
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 600,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.',
+  skip: req => req.path === '/healthz'
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 25,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: 'Có quá nhiều lần đăng nhập/đăng ký. Vui lòng thử lại sau 15 phút.'
+});
+
+const writeLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: 'Có quá nhiều thao tác cập nhật. Vui lòng thử lại sau ít phút.'
+});
+
+app.disable('x-powered-by');
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.set('trust proxy', 1);
+
+app.use((req, res, next) => {
+  req.id = crypto.randomUUID();
+  res.setHeader('X-Request-Id', req.id);
+  next();
+});
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+app.use(compression());
+app.use(express.urlencoded({ extended: true, limit: '100kb', parameterLimit: 100 }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: isProd ? '1h' : 0, etag: true }));
+app.use(globalLimiter);
+
+// Health check cho Render/Uptime monitor. Không tạo session để giảm tải.
+app.get('/healthz', async (req, res) => {
+  try {
+    await db.ping();
+    res.status(200).json({ ok: true, service: 'bee-sneaker-v8' });
+  } catch (err) {
+    console.error(`[${req.id}] healthz failed`, err.message);
+    res.status(503).json({ ok: false });
+  }
+});
+
+app.use(session({
+  store: new pgSession({
+    pool: db.pool,
+    createTableIfMissing: true,
+    pruneSessionInterval: 15 * 60
+  }),
+  name: 'bee.sid',
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  rolling: true,
+  cookie: {
+    maxAge: 8 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProd
+  }
+}));
+
+app.use((req, res, next) => {
+  res.locals.user = req.session.user || null;
+  res.locals.message = req.session.message || null;
+  delete req.session.message;
+  next();
+});
+
+const login = (req, res, next) => req.session.user ? next() : res.redirect('/login');
+const admin = (req, res, next) => req.session.user?.role === 'admin' ? next() : res.redirect('/dashboard');
+const safe = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+const text = (value, max = 255) => String(value || '').trim().slice(0, max);
+const positiveInt = (value, fallback = 0, max = 1000000) => {
+  const n = Number.parseInt(value, 10);
+  return Number.isFinite(n) ? Math.min(Math.max(n, 0), max) : fallback;
+};
+const money = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(Math.max(Math.round(n), 0), 10000000000) : 0;
+};
+
+app.get('/', (req, res) => res.redirect(req.session.user ? '/dashboard' : '/login'));
+app.get('/login', (req, res) => res.render('login', { title: 'Đăng nhập' }));
+app.get('/register', (req, res) => res.render('register', { title: 'Đăng ký CTV' }));
+
+app.post('/register', authLimiter, safe(async (req, res) => {
+  const fullName = text(req.body.full_name, 150);
+  const username = text(req.body.username, 100);
+  const password = String(req.body.password || '');
+  const confirmPassword = String(req.body.confirm_password || '');
+  if (fullName.length < 2 || username.length < 3 || password.length < 8 || password !== confirmPassword) {
+    req.session.message = { type: 'error', text: 'Vui lòng kiểm tra thông tin. Tài khoản từ 3 ký tự, mật khẩu từ 8 ký tự.' };
+    return res.redirect('/register');
+  }
+  if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+    req.session.message = { type: 'error', text: 'Tên đăng nhập chỉ nên dùng chữ, số, dấu chấm, gạch ngang hoặc gạch dưới.' };
+    return res.redirect('/register');
+  }
+  try {
+    const passwordHash = await bcrypt.hash(password, 11);
+    const u = await db.createUser({ username, password_hash: passwordHash, full_name: fullName, role: 'ctv' });
+    req.session.user = { id: u.id, username: u.username, full_name: u.full_name, role: u.role };
+    res.redirect('/dashboard');
+  } catch (e) {
+    req.session.message = { type: 'error', text: e.code === '23505' ? 'Tên đăng nhập đã tồn tại.' : 'Không thể đăng ký tài khoản.' };
+    res.redirect('/register');
+  }
+}));
+
+app.post('/login', authLimiter, safe(async (req, res) => {
+  const username = text(req.body.username, 100);
+  const password = String(req.body.password || '').slice(0, 200);
+  const u = await db.findUserByUsername(username);
+  if (!u || !(await bcrypt.compare(password, u.password_hash))) {
+    req.session.message = { type: 'error', text: 'Tài khoản hoặc mật khẩu không đúng.' };
+    return res.redirect('/login');
+  }
+  req.session.user = { id: u.id, username: u.username, full_name: u.full_name, role: u.role };
+  res.redirect('/dashboard');
+}));
+app.post('/logout', (req, res) => req.session.destroy(() => res.redirect('/login')));
+
+app.get('/dashboard', login, safe(async (req, res) => {
+  if (req.session.user.role === 'admin') {
+    return res.render('dashboard-admin', { title: 'Tổng quan', stats: await db.adminStats(), latest: await db.latestOrders(6) });
+  }
+  res.render('dashboard-ctv', { title: 'Trang CTV', stats: await db.ctvStats(req.session.user.id), latest: (await db.listOrdersByCtv(req.session.user.id)).slice(0, 6) });
+}));
+
+app.get('/products', login, safe(async (req, res) => {
+  const q = text(req.query.q, 100);
+  res.render('products', { title: 'Sản phẩm', products: await db.listProducts(q), q });
+}));
+app.get('/products/new', admin, (req, res) => res.render('product-form', { title: 'Thêm sản phẩm', product: null }));
+app.get('/products/:id/image', safe(async (req, res) => {
+  const img = await db.getProductImage(req.params.id);
+  if (!img?.image_data) return res.status(404).end();
+  res.set('Content-Type', img.image_mime || 'image/jpeg');
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.send(img.image_data);
+}));
+app.post('/products', admin, writeLimiter, upload.single('image'), safe(async (req, res) => {
+  await db.createProduct({
+    name: text(req.body.name, 255),
+    sku: text(req.body.sku, 100) || null,
+    price: money(req.body.price),
+    size: text(req.body.size, 150),
+    quantity: positiveInt(req.body.quantity, 0, 100000),
+    image_data: req.file?.buffer || null,
+    image_mime: req.file?.mimetype || null,
+    note: text(req.body.note, 2000)
+  });
+  res.redirect('/products');
+}));
+app.get('/products/:id/edit', admin, safe(async (req, res) => res.render('product-form', { title: 'Sửa sản phẩm', product: await db.findProductById(req.params.id) })));
+app.post('/products/:id', admin, writeLimiter, upload.single('image'), safe(async (req, res) => {
+  await db.updateProduct(req.params.id, {
+    name: text(req.body.name, 255),
+    sku: text(req.body.sku, 100) || null,
+    price: money(req.body.price),
+    size: text(req.body.size, 150),
+    quantity: positiveInt(req.body.quantity, 0, 100000),
+    image_data: req.file?.buffer || null,
+    image_mime: req.file?.mimetype || null,
+    note: text(req.body.note, 2000)
+  });
+  res.redirect('/products');
+}));
+app.post('/products/:id/delete', admin, writeLimiter, safe(async (req, res) => { await db.deleteProduct(req.params.id); res.redirect('/products'); }));
+
+app.get('/orders/new', login, safe(async (req, res) => {
+  if (req.session.user.role === 'admin') return res.redirect('/orders');
+  res.render('order-form', { title: 'Tạo đơn mới', products: await db.listProducts() });
+}));
+app.post('/orders', login, writeLimiter, safe(async (req, res) => {
+  if (req.session.user.role === 'admin') return res.redirect('/orders');
+  const p = await db.findProductById(req.body.product_id);
+  if (!p) {
+    req.session.message = { type: 'error', text: 'Sản phẩm không tồn tại.' };
+    return res.redirect('/orders/new');
+  }
+  const customerName = text(req.body.customer_name, 150);
+  const phone = text(req.body.phone, 30);
+  const address = text(req.body.address, 1000);
+  const size = text(req.body.size, 50);
+  if (!customerName || !phone || !address || !size) {
+    req.session.message = { type: 'error', text: 'Vui lòng nhập đủ tên khách, SĐT, địa chỉ và size.' };
+    return res.redirect('/orders/new');
+  }
+  const quantity = Math.max(1, positiveInt(req.body.quantity, 1, 100));
+  const baseCod = money(req.body.base_cod);
+  const shippingType = req.body.shipping_type === 'customer_pay' ? 'customer_pay' : 'freeship';
+  const shippingFee = money(req.body.shipping_fee);
+  const cod = baseCod + (shippingType === 'customer_pay' ? shippingFee : 0);
+  const productCost = Number(p.price || 0) * quantity;
+  const taxAmount = Math.round(cod * 0.015);
+  const ctvProfit = cod - productCost - taxAmount;
+  await db.createOrder({
+    ctv_id: req.session.user.id,
+    ctv_name: req.session.user.full_name,
+    customer_name: customerName,
+    phone,
+    address,
+    product_id: p.id,
+    product_name: p.name,
+    size,
+    quantity,
+    base_cod: baseCod,
+    shipping_type: shippingType,
+    shipping_fee: shippingFee,
+    product_cost: productCost,
+    tax_amount: taxAmount,
+    cod,
+    ctv_profit: ctvProfit,
+    tracking_code: '',
+    note: text(req.body.note, 2000)
+  });
+  req.session.message = { type: 'success', text: 'Đã tạo đơn thành công.' };
+  res.redirect('/my-orders');
+}));
+app.get('/my-orders', login, safe(async (req, res) => {
+  if (req.session.user.role === 'admin') return res.redirect('/orders');
+  res.render('orders', { title: 'Đơn của tôi', orders: await db.listOrdersByCtv(req.session.user.id), adminView: false });
+}));
+app.get('/orders', admin, safe(async (req, res) => res.render('orders', { title: 'Đơn hàng', orders: await db.listOrders(), adminView: true })));
+app.post('/orders/:id/status', admin, writeLimiter, safe(async (req, res) => {
+  const allowed = ['Mới', 'Đã xác nhận', 'Đang giao', 'Hoàn thành', 'Hủy'];
+  const status = allowed.includes(req.body.status) ? req.body.status : 'Mới';
+  await db.updateOrderStatus(req.params.id, status);
+  res.redirect('/orders');
+}));
+app.post('/orders/:id/admin-update', admin, writeLimiter, safe(async (req, res) => {
+  await db.updateOrderAdmin(req.params.id, { tracking_code: text(req.body.tracking_code, 120) });
+  req.session.message = { type: 'success', text: 'Đã cập nhật mã vận đơn.' };
+  res.redirect('/orders');
+}));
+
+app.get('/ctv', admin, safe(async (req, res) => res.render('ctv', { title: 'CTV', rows: await db.revenueByCtv() })));
+app.get('/revenue', admin, safe(async (req, res) => res.render('revenue', { title: 'Doanh thu', rows: await db.revenueByCtv(), total: (await db.adminStats()).revenue })));
+app.get('/users', admin, safe(async (req, res) => res.render('users', { title: 'Quản lý tài khoản', users: await db.listUsers() })));
+app.post('/users/:id/delete', admin, writeLimiter, safe(async (req, res) => {
+  if (+req.params.id !== req.session.user.id) await db.deleteUser(req.params.id);
+  res.redirect('/users');
+}));
+
+app.get('/change-password', login, (req, res) => res.render('change-password', { title: 'Đổi mật khẩu' }));
+app.post('/change-password', login, authLimiter, safe(async (req, res) => {
+  const u = await db.findUserById(req.session.user.id);
+  const newPassword = String(req.body.new_password || '');
+  const oldPassword = String(req.body.old_password || '');
+  const confirmPassword = String(req.body.confirm_password || '');
+  if (u && await bcrypt.compare(oldPassword, u.password_hash) && newPassword.length >= 8 && newPassword === confirmPassword) {
+    await db.updatePassword(u.id, await bcrypt.hash(newPassword, 11));
+    req.session.message = { type: 'success', text: 'Đổi mật khẩu thành công.' };
+  } else {
+    req.session.message = { type: 'error', text: 'Thông tin mật khẩu chưa đúng. Mật khẩu mới cần ít nhất 8 ký tự.' };
+  }
+  res.redirect('/change-password');
+}));
+
+app.use((req, res) => res.status(404).send('Không tìm thấy trang.'));
+
+app.use((err, req, res, next) => {
+  console.error(`[${req.id || 'no-id'}] ${req.method} ${req.originalUrl}`, err);
+  if (res.headersSent) return next(err);
+  if (err instanceof multer.MulterError || err?.message?.startsWith('Chỉ chấp nhận ảnh')) {
+    if (req.session) req.session.message = { type: 'error', text: err.message || 'Ảnh tải lên không hợp lệ.' };
+    return res.status(400).redirect(req.get('referer') || '/products');
+  }
+  if (req.session) req.session.message = { type: 'error', text: 'Có lỗi xảy ra. Vui lòng thử lại.' };
+  res.status(500).redirect(req.get('referer') || '/dashboard');
+});
+
+let server;
+async function shutdown(signal) {
+  console.log(`${signal}: đang đóng server an toàn...`);
+  const forceTimer = setTimeout(() => process.exit(1), 10000);
+  forceTimer.unref();
+  if (server) {
+    await new Promise(resolve => server.close(resolve));
+  }
+  await db.close();
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM').catch(err => { console.error(err); process.exit(1); }));
+process.on('SIGINT', () => shutdown('SIGINT').catch(err => { console.error(err); process.exit(1); }));
+process.on('unhandledRejection', err => console.error('Unhandled rejection:', err));
+process.on('uncaughtException', err => console.error('Uncaught exception:', err));
+
+(async () => {
+  try {
+    await db.init();
+    server = app.listen(PORT, '0.0.0.0', () => console.log(`Bee Sneaker V8 đang chạy trên cổng ${PORT}`));
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
+    server.requestTimeout = 30000;
+  } catch (err) {
+    console.error('Không thể kết nối database:', err);
+    process.exit(1);
+  }
+})();
