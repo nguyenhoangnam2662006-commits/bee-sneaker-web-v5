@@ -1,0 +1,50 @@
+<%- include('partials/header') %>
+<% const vp = product?.variant_prices || {}; %>
+<div class="panel form-panel">
+<form action="<%= product ? '/products/'+product.id : '/products' %>" method="post" enctype="multipart/form-data" class="form grid-form">
+  <label class="full">Tên sản phẩm<input name="name" value="<%= product?.name || '' %>" required></label>
+  <label>Mã sản phẩm (SKU)<input name="sku" value="<%= product?.sku || '' %>"></label>
+  <label>Size<input name="size" value="<%= product?.size || '' %>" placeholder="Ví dụ: 38, 39, 40, 41"></label>
+
+  <div class="full panel" style="padding:16px">
+    <strong>Phân loại hàng & giá gốc</strong>
+    <small style="display:block;margin-top:4px">Nhập giá riêng cho từng chất lượng. Giá 0 nghĩa là mẫu này không có phân loại đó.</small>
+    <div class="grid-form" style="margin-top:12px">
+      <label>Like Auth<input type="number" min="0" name="price_like_auth" value="<%= Number(vp['Like Auth'] || 0) %>" placeholder="Ví dụ: 320000"></label>
+      <label>Siêu Cấp<input type="number" min="0" name="price_sieu_cap" value="<%= Number(vp['Siêu Cấp'] || 0) %>" placeholder="Ví dụ: 380000"></label>
+      <label>Best<input type="number" min="0" name="price_best" value="<%= Number(vp['Best'] || product?.price || 0) %>" placeholder="Ví dụ: 450000"></label>
+    </div>
+  </div>
+
+  <label>Số lượng tồn<input type="number" min="0" name="quantity" value="<%= product?.quantity || 0 %>" required></label>
+
+  <label class="full">Ảnh đại diện sản phẩm
+    <input type="file" name="image" accept="image/*">
+    <small>Ảnh này sẽ hiện ngoài danh sách sản phẩm.</small>
+  </label>
+  <% if(product?.image){ %><div class="full preview"><img src="<%= product.image %>" alt="Ảnh đại diện"></div><% } %>
+
+  <label class="full">Ảnh chi tiết sản phẩm
+    <input type="file" name="detail_images" accept="image/*" multiple>
+    <small>Chọn tối đa 8 ảnh/lần. Các ảnh này sẽ hiện trong trang chi tiết khi bấm vào sản phẩm.</small>
+  </label>
+
+  <% if(gallery?.length){ %>
+    <div class="full">
+      <strong>Ảnh chi tiết hiện có</strong>
+      <div class="gallery-edit">
+        <% gallery.forEach(img => { %>
+          <div class="gallery-edit-item">
+            <img src="<%= img.url %>" alt="Ảnh chi tiết">
+            <button class="btn danger small" type="submit" formaction="/products/<%= product.id %>/gallery/<%= img.id %>/delete" formmethod="post" onclick="return confirm('Xóa ảnh này?')">Xóa ảnh</button>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
+  <label class="full">Ghi chú<textarea name="note" rows="4"><%= product?.note || '' %></textarea></label>
+  <div class="full form-actions"><a href="/products" class="btn">Quay lại</a><button class="btn primary"><%= product ? 'Lưu thay đổi' : 'Thêm sản phẩm' %></button></div>
+</form>
+</div>
+<%- include('partials/footer') %>
