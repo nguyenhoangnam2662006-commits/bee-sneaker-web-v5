@@ -1,0 +1,29 @@
+<%- include('partials/header') %>
+<div class="panel"><div class="table-wrap"><table>
+<thead><tr><th>Mã</th><% if(adminView){ %><th>CTV</th><% } %><th>Khách hàng</th><th>Địa chỉ</th><th>Sản phẩm</th><th>SL</th><th>Ship</th><th>COD</th><th>Gốc</th><th>Thuế</th><th>Lãi CTV</th><th>Mã vận đơn</th><th>Trạng thái</th></tr></thead>
+<tbody>
+<% if(!orders.length){ %><tr><td colspan="13" class="empty">Chưa có đơn hàng.</td></tr><% } %>
+<% orders.forEach(o=>{ %><tr>
+<td>#<%= o.id %><small><%= new Date(o.created_at).toLocaleString('vi-VN') %></small></td>
+<% if(adminView){ %><td><%= o.ctv_name %></td><% } %>
+<td><b><%= o.customer_name %></b><small><%= o.phone %></small></td>
+<td><%= o.address %></td>
+<td><b><%= o.product_name %></b><small>Size <%= o.size %></small></td>
+<td><%= o.quantity %></td>
+<td><b><%= o.shipping_type==='customer_pay'?'Cộng ship':'Freeship' %></b><small><%= Number(o.shipping_fee||0).toLocaleString('vi-VN') %>đ</small></td>
+<td><b><%= Number(o.cod).toLocaleString('vi-VN') %>đ</b><small>Tiền hàng: <%= Number(o.base_cod||o.cod||0).toLocaleString('vi-VN') %>đ</small></td>
+<td><%= Number(o.product_cost||0).toLocaleString('vi-VN') %>đ</td>
+<td><%= Number(o.tax_amount||0).toLocaleString('vi-VN') %>đ</td>
+<td><b><%= Number(o.ctv_profit||0).toLocaleString('vi-VN') %>đ</b></td>
+<td>
+<% if(adminView){ %>
+<form class="inline-edit" action="/orders/<%= o.id %>/admin-update" method="post">
+<input name="tracking_code" value="<%= o.tracking_code||'' %>" placeholder="Nhập mã vận đơn">
+<button class="btn small">Lưu</button>
+</form>
+<% } else { %><%= o.tracking_code||'Chưa có' %><% } %>
+</td>
+<td><% if(adminView){ %><form action="/orders/<%= o.id %>/status" method="post"><select name="status" onchange="this.form.submit()"><% ['Mới','Đã xác nhận','Đang giao','Hoàn thành','Hủy'].forEach(s=>{ %><option <%= o.status===s?'selected':'' %>><%= s %></option><% }) %></select></form><% } else { %><span class="badge"><%= o.status %></span><% } %></td>
+</tr><% }) %>
+</tbody></table></div></div>
+<%- include('partials/footer') %>

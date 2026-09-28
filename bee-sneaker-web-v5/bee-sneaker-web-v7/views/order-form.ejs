@@ -1,0 +1,58 @@
+<%- include('partials/header') %>
+<div class="panel form-panel">
+<form class="form grid-form" method="post" action="/orders" id="orderForm">
+<label>Họ tên khách<input name="customer_name" required></label>
+<label>Số điện thoại<input name="phone" required></label>
+<label class="full">Địa chỉ khách hàng<textarea name="address" rows="3" required></textarea></label>
+<label>Sản phẩm<select name="product_id" id="productId" required><option value="">-- Chọn đôi giày --</option><% products.forEach(p=>{ %><option value="<%= p.id %>" data-cost="<%= Number(p.price||0) %>"><%= p.name %> | <%= p.sku||'' %> | Gốc <%= Number(p.price).toLocaleString('vi-VN') %>đ</option><% }) %></select></label>
+<label>Size<input name="size" placeholder="Ví dụ: 40" required></label>
+<label>Số lượng<input name="quantity" id="quantity" type="number" min="1" value="1" required></label>
+<label>Tiền thu hộ tiền hàng<input name="base_cod" id="baseCod" type="number" min="0" placeholder="Ví dụ: 550000" required></label>
+<label>Phí ship<input name="shipping_fee" id="shippingFee" type="number" min="0" value="0" placeholder="Ví dụ: 30000"></label>
+<label class="full">Cách tính ship
+<select name="shipping_type" id="shippingType" required>
+<option value="freeship">Freeship cho khách (không cộng ship vào COD)</option>
+<option value="customer_pay">Khách trả ship (cộng ship vào COD)</option>
+</select>
+</label>
+<div class="full panel" style="padding:16px">
+<strong>Tạm tính tự động</strong>
+<div style="margin-top:8px;display:grid;gap:6px">
+<div>Tiền gốc: <b id="previewCost">0đ</b></div>
+<div>COD cuối: <b id="previewCod">0đ</b></div>
+<div>Thuế 1,5% COD: <b id="previewTax">0đ</b></div>
+<div>Lãi CTV = COD − tiền gốc − thuế: <b id="previewProfit">0đ</b></div>
+</div>
+</div>
+<label class="full">Ghi chú<textarea name="note" rows="3" placeholder="Màu, yêu cầu khách, ghi chú giao hàng..."></textarea></label>
+<div class="full form-actions"><a class="btn" href="/my-orders">Hủy</a><button class="btn primary">Tạo đơn</button></div>
+</form>
+</div>
+<script>
+(function(){
+  const product=document.getElementById('productId');
+  const qty=document.getElementById('quantity');
+  const base=document.getElementById('baseCod');
+  const ship=document.getElementById('shippingFee');
+  const type=document.getElementById('shippingType');
+  const fmt=n=>Math.round(n||0).toLocaleString('vi-VN')+'đ';
+  function calc(){
+    const opt=product.options[product.selectedIndex];
+    const unit=Number(opt?.dataset?.cost||0);
+    const q=Math.max(1,Number(qty.value)||1);
+    const baseCod=Math.max(0,Number(base.value)||0);
+    const shipping=Math.max(0,Number(ship.value)||0);
+    const cod=baseCod+(type.value==='customer_pay'?shipping:0);
+    const cost=unit*q;
+    const tax=Math.round(cod*0.015);
+    const profit=cod-cost-tax;
+    document.getElementById('previewCost').textContent=fmt(cost);
+    document.getElementById('previewCod').textContent=fmt(cod);
+    document.getElementById('previewTax').textContent=fmt(tax);
+    document.getElementById('previewProfit').textContent=fmt(profit);
+  }
+  [product,qty,base,ship,type].forEach(el=>el.addEventListener('input',calc));
+  calc();
+})();
+</script>
+<%- include('partials/footer') %>
