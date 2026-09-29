@@ -1,0 +1,15 @@
+<%- include('partials/header') %>
+<div class="panel">
+<% if(!cart.length){ %><div class="empty" style="padding:36px">Giỏ hàng đang trống.<div style="margin-top:16px"><a class="btn primary" href="/products">Chọn sản phẩm</a></div></div><% } else { %>
+<div class="table-wrap"><table><thead><tr><th>Ảnh</th><th>Sản phẩm</th><th>Phân loại</th><th>Size</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th><th></th></tr></thead><tbody>
+<% cart.forEach((x,i)=>{ %><tr>
+<td><div class="thumb"><% if(x.image){ %><img src="<%= x.image %>" alt=""><% } else { %>👟<% } %></div></td>
+<td><b><%= x.product_name %></b><small><%= x.sku||'' %></small></td><td><%= variantLabel(x.product_variant) %></td><td><%= x.size %></td><td><%= Number(x.unit_price).toLocaleString('vi-VN') %>đ</td>
+<td><form class="inline-edit" action="/cart/<%= i %>/update" method="post"><input style="width:75px" type="number" min="1" max="100" name="quantity" value="<%= x.quantity %>"><button class="btn small">Cập nhật</button></form></td>
+<td><b><%= (Number(x.unit_price)*Number(x.quantity)).toLocaleString('vi-VN') %>đ</b></td>
+<td><form action="/cart/<%= i %>/delete" method="post"><button class="btn danger small">Xóa</button></form></td>
+</tr><% }) %></tbody></table></div>
+<div class="cart-summary"><div><span>Tổng số lượng</span><strong><%= totals.totalQuantity %> đôi</strong></div><div><span>Tổng tiền</span><strong><%= Number(totals.totalMoney).toLocaleString('vi-VN') %>đ</strong></div></div>
+<div class="form-actions cart-actions"><form action="/cart/clear" method="post" onsubmit="return confirm('Xóa toàn bộ giỏ hàng?')"><button class="btn danger">Xóa giỏ</button></form><a class="btn" href="/products">+ Mua thêm</a><a class="btn primary" href="/checkout">Tiến hành đặt đơn →</a></div>
+<% } %></div>
+<%- include('partials/footer') %>

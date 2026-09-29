@@ -1,0 +1,15 @@
+<%- include('partials/header') %>
+<% const vp=product.variant_prices||{}; %>
+<div class="panel form-panel">
+<div class="cart-product-head">
+  <div class="thumb cart-large-thumb"><% if(product.image){ %><img src="<%= product.image %>" alt="<%= product.name %>"><% } else { %>👟<% } %></div>
+  <div><h2><%= product.name %></h2><div>Mã: <b><%= product.sku||'-' %></b></div><div>Size có sẵn: <b><%= product.size||'-' %></b></div></div>
+</div>
+<form method="post" action="/cart/add" class="form grid-form">
+<input type="hidden" name="product_id" value="<%= product.id %>">
+<label>Phân loại hàng<select name="product_variant" required><option value="">-- Chọn phân loại --</option><% ['Like Auth','Siêu Cấp','Best'].forEach(v=>{ if(Number(vp[v]||0)>0){ %><option value="<%= v %>"><%= variantLabel(v) %> - <%= Number(vp[v]).toLocaleString('vi-VN') %>đ</option><% } }) %></select></label>
+<label>Size<input name="size" placeholder="Ví dụ: 40" required></label>
+<label>Số lượng<input name="quantity" type="number" min="1" max="20" value="1" required></label>
+<div class="full form-actions"><a class="btn" href="/products">Quay lại</a><button class="btn primary">🛒 Thêm vào giỏ</button></div>
+</form></div>
+<%- include('partials/footer') %>
