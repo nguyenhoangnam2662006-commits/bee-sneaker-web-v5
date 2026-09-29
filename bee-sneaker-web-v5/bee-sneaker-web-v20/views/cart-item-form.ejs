@@ -1,0 +1,21 @@
+<%- include('partials/header') %>
+<% const vp=product.variant_prices||{}; const soldOut = sizeOptions.length ? sizeOptions.every(x=>Number(x.stock)<=0) : Number(product.quantity||0)<=0; %>
+<div class="panel form-panel">
+<div class="cart-product-head">
+  <div class="thumb cart-large-thumb"><% if(product.image){ %><img src="<%= product.image %>" alt="<%= product.name %>"><% } else { %>👟<% } %></div>
+  <div><h2><%= product.name %></h2><div>Mã: <b><%= product.sku||'-' %></b></div><div>Tồn: <b><%= Number(product.quantity||0) %> đôi</b></div></div>
+</div>
+<% if(soldOut){ %>
+  <div class="alert error">Mẫu này đã hết hàng toàn bộ size.</div>
+  <a class="btn" href="/products">← Quay lại sản phẩm</a>
+<% } else { %>
+<form method="post" action="/cart/add" class="form grid-form">
+<input type="hidden" name="product_id" value="<%= product.id %>">
+<label>Phân loại hàng<select name="product_variant" required><option value="">-- Chọn phân loại --</option><% ['Like Auth','Siêu Cấp','Best'].forEach(v=>{ if(Number(vp[v]||0)>0){ %><option value="<%= v %>"><%= variantLabel(v) %> - <%= Number(vp[v]).toLocaleString('vi-VN') %>đ</option><% } }) %></select></label>
+<label>Size<select name="size" required><option value="">-- Chọn size --</option><% sizeOptions.forEach(x=>{ %><option value="<%= x.size %>" <%= Number(x.stock)<=0?'disabled':'' %>><%= x.size %> — <%= Number(x.stock)>0 ? ('còn '+x.stock+' đôi') : 'Hết size' %></option><% }) %></select></label>
+<label>Số lượng<input name="quantity" type="number" min="1" max="20" value="1" required></label>
+<div class="full form-actions"><a class="btn" href="/products">Quay lại</a><button class="btn primary">🛒 Thêm vào giỏ</button></div>
+</form>
+<% } %>
+</div>
+<%- include('partials/footer') %>
