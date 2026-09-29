@@ -1,0 +1,17 @@
+<%- include('partials/header') %>
+<div class="toolbar"><form class="search"><input name="q" value="<%= q %>" placeholder="Tìm tên, mã, size..."><button class="btn">Tìm</button></form><% if(user.role==='admin'){ %><a href="/products/new" class="btn primary">+ Thêm sản phẩm</a><% } %></div>
+<div class="panel"><div class="table-wrap"><table><thead><tr><th>Ảnh</th><th>Tên giày</th><th>Mã</th><th>Phân loại & giá</th><th>Size</th><th>Số lượng</th><th></th></tr></thead><tbody>
+<% if(products.length===0){ %><tr><td colspan="7" class="empty">Không có sản phẩm.</td></tr><% } %>
+<% products.forEach(p=>{ const vp=p.variant_prices||{}; const ss=p.size_stock||{}; const hasSS=Object.keys(ss).length>0; const sizeArr=(p.size||'').split(/[,;\n\/]+/).map(x=>x.trim()).filter(Boolean); const soldOut=Number(p.quantity||0)<=0; %><tr class="<%= soldOut?'sold-out-row':'' %>">
+<td><a href="/products/<%= p.id %>" class="thumb product-click"><% if(p.image){ %><img src="<%= p.image %>" alt="<%= p.name %>"><% } else { %>👟<% } %></a></td>
+<td><a class="product-name-link" href="/products/<%= p.id %>"><b><%= p.name %></b></a><% if(p.note){ %><small><%= p.note %></small><% } %><small class="detail-hint">Bấm để xem ảnh & chi tiết</small></td>
+<td><%= p.sku || '-' %></td>
+<td>
+  <% ['Like Auth','Siêu Cấp','Best'].forEach(v=>{ if(Number(vp[v]||0)>0){ %>
+    <div><b><%= variantLabel(v) %>:</b> <%= Number(vp[v]).toLocaleString('vi-VN') %>đ</div>
+  <% } }) %>
+</td>
+<td><% if(sizeArr.length){ %><div class="size-chips"><% sizeArr.forEach(sz=>{ const st=hasSS?Number(ss[sz]||0):Number(p.quantity||0); %><span class="size-chip <%= st<=0?'out':'' %>"><%= sz %><small><%= st<=0?'Hết':st %></small></span><% }) %></div><% } else { %>-<% } %></td><td><% if(soldOut){ %><span class="sold-out-badge">Hết hàng</span><% } else { %><span class="stock <%= p.quantity <= 3 ? 'low' : '' %>"><%= p.quantity %> đôi</span><% } %></td>
+<td class="actions"><a class="btn small" href="/products/<%= p.id %>">Chi tiết</a><% if(user.role==='ctv'){ %><% if(soldOut){ %><span class="btn small disabled-btn">Hết hàng</span><% } else { %><a class="btn primary small" href="/cart/add?product_id=<%= p.id %>">Thêm giỏ</a><% } %><% } %><% if(user.role==='admin'){ %><a class="btn small" href="/products/<%= p.id %>/edit">Sửa</a><form action="/products/<%= p.id %>/delete" method="post" onsubmit="return confirm('Xóa sản phẩm này?')"><button class="btn danger small">Xóa</button></form><% } %></td>
+</tr><% }) %></tbody></table></div></div>
+<%- include('partials/footer') %>
