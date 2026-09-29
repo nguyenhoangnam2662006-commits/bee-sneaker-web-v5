@@ -1,0 +1,72 @@
+<%- include('partials/header') %>
+<% const vp = product?.variant_prices || {}; const ss = product?.size_stock || {}; %>
+<div class="panel form-panel">
+<form action="<%= product ? '/products/'+product.id : '/products' %>" method="post" enctype="multipart/form-data" class="form grid-form">
+  <label class="full">Tên sản phẩm<input name="name" value="<%= product?.name || '' %>" required></label>
+  <label>Mã sản phẩm (SKU)<input name="sku" value="<%= product?.sku || '' %>"></label>
+  <label>Size<input id="sizeInput" name="size" value="<%= product?.size || '' %>" placeholder="Ví dụ: 38, 39, 40, 41"></label>
+
+  <div class="full panel" style="padding:16px">
+    <strong>Tồn kho theo từng size</strong>
+    <small style="display:block;margin-top:4px">Có thể nhập size bằng dấu cách hoặc dấu phẩy, ví dụ: 36 37 38 39 40. Mỗi size sẽ có ô tồn kho riêng. Size = 0 sẽ hiện “Hết size”.</small>
+    <div id="sizeStockGrid" class="size-stock-grid" data-stock='<%- JSON.stringify(ss) %>'></div>
+  </div>
+
+  <div class="full panel" style="padding:16px">
+    <strong>Phân loại hàng & giá gốc</strong>
+    <small style="display:block;margin-top:4px">Nhập giá riêng cho từng chất lượng. Giá 0 nghĩa là mẫu này không có phân loại đó.</small>
+    <div class="grid-form" style="margin-top:12px">
+      <label>Loại A<input type="number" min="0" name="price_like_auth" value="<%= Number(vp['Like Auth'] || 0) %>" placeholder="Ví dụ: 320000"></label>
+      <label>Siêu Cấp<input type="number" min="0" name="price_sieu_cap" value="<%= Number(vp['Siêu Cấp'] || 0) %>" placeholder="Ví dụ: 380000"></label>
+      <label>Best<input type="number" min="0" name="price_best" value="<%= Number(vp['Best'] || product?.price || 0) %>" placeholder="Ví dụ: 450000"></label>
+    </div>
+  </div>
+
+  <div><label>Tổng tồn hiện tại<input value="<%= product?.quantity || 0 %> đôi" readonly></label></div>
+
+  <label class="full">Ảnh đại diện sản phẩm
+    <input type="file" name="image" accept="image/*">
+    <small>Ảnh này sẽ hiện ngoài danh sách sản phẩm.</small>
+  </label>
+  <% if(product?.image){ %><div class="full preview"><img src="<%= product.image %>" alt="Ảnh đại diện"></div><% } %>
+
+  <label class="full">Ảnh chi tiết sản phẩm
+    <input type="file" name="detail_images" accept="image/*" multiple>
+    <small>Chọn tối đa 8 ảnh/lần. Các ảnh này sẽ hiện trong trang chi tiết khi bấm vào sản phẩm.</small>
+  </label>
+
+  <% if(gallery?.length){ %>
+    <div class="full">
+      <strong>Ảnh chi tiết hiện có</strong>
+      <div class="gallery-edit">
+        <% gallery.forEach(img => { %>
+          <div class="gallery-edit-item">
+            <img src="<%= img.url %>" alt="Ảnh chi tiết">
+            <button class="btn danger small" type="submit" formaction="/products/<%= product.id %>/gallery/<%= img.id %>/delete" formmethod="post" onclick="return confirm('Xóa ảnh này?')">Xóa ảnh</button>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
+  <label class="full">Ghi chú<textarea name="note" rows="4"><%= product?.note || '' %></textarea></label>
+  <div class="full form-actions"><a href="/products" class="btn">Quay lại</a><button class="btn primary"><%= product ? 'Lưu thay đổi' : 'Thêm sản phẩm' %></button></div>
+</form>
+</div>
+<script>
+(() => {
+  const sizeInput = document.getElementById('sizeInput');
+  const grid = document.getElementById('sizeStockGrid');
+  if (!sizeInput || !grid) return;
+  let initial = {};
+  try { initial = JSON.parse(grid.dataset.stock || '{}'); } catch(e) {}
+  const values = {...initial};
+  function sizes(){ return [...new Set(sizeInput.value.split(/[,;\n\/\s]+/).map(x=>x.trim()).filter(Boolean))]; }
+  function render(){
+    grid.querySelectorAll('input[data-size]').forEach(i => values[i.dataset.size] = i.value);
+    grid.innerHTML = sizes().map(size => `<label><span>Size ${size}</span><input data-size="${size.replace(/"/g,'&quot;')}" type="number" min="0" max="100000" name="size_stock[${size.replace(/"/g,'&quot;')}]" value="${Number(values[size] ?? 0)}"><small>${Number(values[size] ?? 0)<=0?'Hết size':'đôi'}</small></label>`).join('') || '<div class="muted">Nhập danh sách size ở ô phía trên để tạo tồn kho từng size.</div>';
+  }
+  sizeInput.addEventListener('input', render); render();
+})();
+</script>
+<%- include('partials/footer') %>
