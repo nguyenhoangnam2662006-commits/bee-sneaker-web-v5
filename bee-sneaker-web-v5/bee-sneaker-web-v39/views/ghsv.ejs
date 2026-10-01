@@ -1,0 +1,25 @@
+<%- include('partials/header') %>
+<div class="panel"><div class="panel-head"><div><h2>Tra cứu GHSV · Đơn #<%= order.id %></h2><p>Mã vận đơn: <b><%= order.tracking_code %></b></p></div><a class="btn" href="/support/new?order_id=<%= order.id %>">🎧 Tạo yêu cầu CSKH</a></div>
+<% if(!configured){ %><div class="alert error">Chủ shop chưa cấu hình kết nối GHSV trong Render Environment.</div><% } %>
+<% if(error){ %><div class="alert error"><%= error %></div><% } %>
+<% if(trackingError){ %><div class="alert"><%= trackingError %></div><% } %>
+<div class="stats"><div class="stat"><span>Trạng thái GHSV</span><strong><%= info.status||'Chưa lấy được' %></strong></div><div class="stat"><span>COD</span><strong><%= info.cod!=null?Number(info.cod).toLocaleString('vi-VN')+'đ':'-' %></strong></div><div class="stat"><span>Phí vận chuyển</span><strong><%= info.fee!=null?Number(info.fee).toLocaleString('vi-VN')+'đ':'-' %></strong></div><div class="stat"><span>Shipper</span><strong><%= shipper.name||'GHSV chưa cung cấp tên shipper' %></strong><small><b>SĐT shipper:</b> <%= shipper.phone||'GHSV chưa cung cấp' %></small></div></div>
+</div>
+<div class="panel"><h2>Hành trình đơn</h2><div class="table-wrap"><table><thead><tr><th>Thời gian</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead><tbody><% if(!tracking.length){ %><tr><td colspan="3" class="empty">Chưa có dữ liệu hành trình.</td></tr><% } %><% tracking.forEach(x=>{ %><tr><td><%= x.time||x.created_at||'-' %></td><td><b><%= x.status||'-' %></b></td><td><%= x.note||'-' %></td></tr><% }) %></tbody></table></div></div>
+
+<% if (user && user.role === 'admin') { %>
+  <div class="card" style="margin-top:16px;padding:16px;">
+    <h3 style="margin-top:0;">Liên kết mã nội bộ → MVD GHSV</h3>
+    <p style="margin:6px 0 12px;color:#64748b;">CTV vẫn dùng mã nội bộ <strong><%= order.tracking_code %></strong>. Chủ shop chỉ cần nhập MVD GHSV một lần, ví dụ <strong>B57BRYK0020982</strong>.</p>
+    <% if (codeMap && codeMap.required_code) { %>
+      <p>Đang liên kết: <strong><%= codeMap.client_code %></strong> → <strong><%= codeMap.required_code %></strong></p>
+    <% } %>
+    <form method="post" action="/orders/<%= order.id %>/ghsv/link" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input name="required_code" placeholder="Nhập MVD GHSV" value="<%= codeMap && codeMap.required_code ? codeMap.required_code : '' %>" style="min-width:260px;">
+      <button class="btn primary" type="submit">Lưu liên kết</button>
+    </form>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>
