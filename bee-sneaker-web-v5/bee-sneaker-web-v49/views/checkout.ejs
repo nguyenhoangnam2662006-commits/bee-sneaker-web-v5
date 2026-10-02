@@ -1,0 +1,15 @@
+<%- include('partials/header') %>
+<div class="checkout-grid">
+<div class="panel form-panel"><form class="form grid-form" method="post" action="/checkout" id="checkoutForm">
+<label>Họ tên khách<input name="customer_name" required></label><label>Số điện thoại<input name="phone" required></label>
+<label class="full">Địa chỉ khách hàng<textarea name="address" rows="3" required></textarea></label>
+<label>Tiền thu hộ tiền hàng<input name="base_cod" id="baseCod" type="number" min="0" value="<%= totals.totalMoney %>" required></label>
+<label>Phí ship tự động<input id="shippingFee" value="<%= shippingFee %>" readonly></label>
+<label class="full">Cách tính ship<select name="shipping_type" id="shippingType"><option value="freeship">Freeship cho khách</option><option value="customer_pay">Khách trả ship (cộng ship vào COD)</option></select></label>
+<div class="full panel" style="padding:16px"><strong>Tạm tính đơn</strong><div style="display:grid;gap:6px;margin-top:8px"><div>Tổng số lượng: <b><%= totals.totalQuantity %> đôi</b></div><div>Tổng tiền gốc: <b><%= Number(totals.totalMoney).toLocaleString('vi-VN') %>đ</b></div><div>COD cuối: <b id="previewCod"></b></div><div>Thuế 1,5%: <b id="previewTax"></b></div><div>Lãi trước ship: <b id="previewProfitBeforeShip"></b></div><div>Phí ship CTV chịu: <b id="previewShipCost"></b></div><div>Lãi CTV cuối: <b id="previewProfit"></b></div></div></div>
+<label class="full">Ghi chú<textarea name="note" rows="3"></textarea></label>
+<div class="full form-actions"><a class="btn" href="/cart">← Quay lại giỏ</a><button class="btn primary">Đặt đơn</button></div></form></div>
+<div class="panel checkout-items"><h3>Sản phẩm trong đơn</h3><% cart.forEach(x=>{ %><div class="checkout-item"><div class="thumb"><% if(x.image){ %><img src="<%= x.image %>"><% } else { %>👟<% } %></div><div><b><%= x.product_name %></b><small><%= variantLabel(x.product_variant) %> · Size <%= x.size %> · SL <%= x.quantity %></small></div><strong><%= (Number(x.unit_price)*Number(x.quantity)).toLocaleString('vi-VN') %>đ</strong></div><% }) %></div>
+</div>
+<script>(function(){const base=document.getElementById('baseCod'),type=document.getElementById('shippingType'),ship=<%= shippingFee %>,cost=<%= totals.totalMoney %>;const f=n=>Math.round(n||0).toLocaleString('vi-VN')+'đ';function calc(){const b=Math.max(0,Number(base.value)||0),cod=b+(type.value==='customer_pay'?ship:0),tax=Math.round(cod*.015),profit=cod-cost-tax-(type.value==='freeship'?ship:0);document.getElementById('previewCod').textContent=f(cod);document.getElementById('previewTax').textContent=f(tax);document.getElementById('previewShipCost').textContent=f(type.value==='freeship'?ship:0);document.getElementById('previewProfit').textContent=f(profit)}[base,type].forEach(x=>x.addEventListener('input',calc));calc()})();</script>
+<%- include('partials/footer') %>
