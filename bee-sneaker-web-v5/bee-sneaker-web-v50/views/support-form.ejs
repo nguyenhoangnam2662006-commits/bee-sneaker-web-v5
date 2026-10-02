@@ -1,0 +1,4 @@
+<%- include('partials/header') %>
+<div class="panel narrow"><h2>Yêu cầu xử lý đơn #<%= order.id %></h2><p>Mã vận đơn: <b><%= order.tracking_code||'Chưa có' %></b></p><p>Khách: <b><%= order.customer_name %></b> · <%= order.product_name %></p>
+<form method="post" action="/support/new"><input type="hidden" name="order_id" value="<%= order.id %>"><label>Đơn này cần làm gì?</label><select name="request_type" required><% ['Hối lấy hàng','Hối giao','Giao lại','Khách hẹn ngày','Khách không nghe máy','Sai địa chỉ','Yêu cầu hoàn','Khác'].forEach(x=>{ %><option><%= x %></option><% }) %></select><label>Ghi chú</label><textarea name="note" rows="5" placeholder="Ví dụ: đơn từ sáng chưa có shipper lấy..."></textarea><button class="btn primary">Gửi yêu cầu</button></form></div>
+<%- include('partials/footer') %>
