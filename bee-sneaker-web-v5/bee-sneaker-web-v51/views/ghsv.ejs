@@ -1,0 +1,42 @@
+<%- include('partials/header') %>
+<div class="panel"><div class="panel-head"><div><h2>Tra cứu GHSV · Đơn #<%= order.id %></h2>
+<% if (legacyMode) { %>
+  <p>Mã GHSV đơn cũ: <b><%= order.tracking_code %></b></p>
+  <p style="margin-top:4px;color:#64748b;">Đơn cũ được tra trực tiếp bằng mã GHSV/MVD; không coi mã này là client_code.</p>
+<% } else { %>
+  <p>Client code Bee: <b><%= order.tracking_code %></b></p>
+  <% if (user && user.role === 'admin' && codeMap && codeMap.required_code) { %><p style="margin-top:4px;color:#64748b;">Mã GHSV đã nhận: <b><%= codeMap.required_code %></b></p><% } %>
+<% } %>
+</div><a class="btn" href="/support/new?order_id=<%= order.id %>">🎧 Tạo yêu cầu CSKH</a></div>
+<% if(!configured){ %><div class="alert error">Chủ shop chưa cấu hình kết nối GHSV trong Render Environment.</div><% } %>
+<% if(error){ %><div class="alert error"><%= error %></div><% } %>
+<% if(trackingError){ %><div class="alert"><%= trackingError %></div><% } %>
+<div class="stats">
+  <div class="stat"><span>Trạng thái GHSV</span><strong><%= info.status||'Chưa lấy được' %></strong></div>
+  <div class="stat"><span>COD</span><strong><%= info.cod!=null?Number(info.cod).toLocaleString('vi-VN')+'đ':'-' %></strong></div>
+  <div class="stat"><span><%= user && user.role === 'admin' ? 'Phí ship Bee Sneaker' : 'Phí ship' %></span><strong><%= Number(order.shipping_fee||0).toLocaleString('vi-VN') %>đ</strong></div>
+  <% if (user && user.role === 'admin') { %>
+    <div class="stat"><span>Phí GHSV thực tế</span><strong><%= ghsvFee!=null?Number(ghsvFee).toLocaleString('vi-VN')+'đ':'-' %></strong><small>Chỉ chủ shop nhìn thấy</small></div>
+  <% } %>
+  <div class="stat"><span>Shipper</span><strong><%= shipper.name||'GHSV chưa cung cấp tên shipper' %></strong><small><b>SĐT shipper:</b> <%= shipper.phone||'GHSV chưa cung cấp' %></small></div>
+</div>
+</div>
+<div class="panel"><h2>Hành trình đơn</h2><div class="table-wrap"><table><thead><tr><th>Thời gian</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead><tbody><% if(!tracking.length){ %><tr><td colspan="3" class="empty">Chưa có dữ liệu hành trình.</td></tr><% } %><% tracking.forEach(x=>{ %><tr><td><%= x.time||x.created_at||'-' %></td><td><b><%= x.status||'-' %></b></td><td><%= x.note||'-' %></td></tr><% }) %></tbody></table></div></div>
+
+<% if (user && user.role === 'admin') { %>
+  <div class="card" style="margin-top:16px;padding:16px;">
+    <h3 style="margin-top:0;">Đồng bộ GHSV tự động</h3>
+    <% if (legacyMode) { %>
+      <p style="margin:6px 0;color:#64748b;">Đây là <strong>đơn cũ</strong>. Bee dùng mã GHSV/MVD đang lưu để đọc hành trình và lấy trạng thái cuối cùng. Nếu hành trình báo giao thành công/hoàn/hủy, Bee sẽ tự cập nhật trạng thái đơn và phần lãi.</p>
+    <% } else { %>
+      <p style="margin:6px 0;color:#64748b;">Đơn mới dùng <strong>client_code do Bee tự sinh</strong>. Khi tạo đơn trên GHSV, chủ shop dán đúng mã này vào ô <strong>Mã đơn tùy chỉnh / client_code</strong>.</p>
+      <% if (codeMap && codeMap.required_code) { %>
+        <p style="margin:8px 0 0;">API đã trả mã GHSV: <strong><%= codeMap.client_code %></strong> → <strong><%= codeMap.required_code %></strong></p>
+      <% } else { %>
+        <p style="margin:8px 0 0;color:#b45309;">Chưa nhận được required_code từ API. Bee vẫn tra trạng thái bằng client_code.</p>
+      <% } %>
+    <% } %>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>
