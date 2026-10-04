@@ -1,0 +1,18 @@
+# Bee Sneaker V63
+
+V63 sửa logic kho đúng theo từng mẫu sản phẩm:
+
+- Trang `Kho hàng` chỉ còn là danh sách cửa hàng GHSV dùng chung để đồng bộ `shop_id` + địa chỉ.
+- Mỗi sản phẩm có riêng mục **Địa chỉ lấy hàng / Kho ưu tiên** ngay trong trang **Sửa sản phẩm**.
+- Có thể gán Kho 1 → Kho 2 → Kho 3 khác nhau cho từng mẫu.
+- Có thể gán chung mọi size bằng `*` hoặc gán riêng từng size.
+- Select kho hiển thị tên kho + Shop ID + địa chỉ để tránh chọn nhầm.
+- Trang chi tiết sản phẩm (Admin) hiển thị thứ tự kho hiện tại.
+- Nút danh sách sản phẩm đổi thành `Sửa + Kho` để vào thẳng chỗ cấu hình.
+- Giữ nguyên API GHSV, đồng bộ shop_id, tạo đơn, trạng thái và lãi từ V62.
+
+
+## V64 - fix lỗi báo 500 sau khi đơn đã tạo
+- Không để lỗi audit hoặc tự gán kho ưu tiên làm request tạo đơn trả 500 sau khi order đã commit.
+- Tránh CTV tưởng đơn chưa tạo và bấm lại gây trùng đơn.
+- Nếu gán kho tự động lỗi, đơn vẫn được tạo; lỗi được ghi trong Render Logs để admin xử lý.

@@ -1,0 +1,11 @@
+<%- include('partials/header') %>
+<div class="panel" style="max-width:760px;">
+  <h2>Tra cứu đơn bằng mã nội bộ Bee</h2>
+  <p style="color:#64748b;">Nhập mã dạng <b>BEE000018</b>. CTV chỉ tra được đơn của chính mình.</p>
+  <% if(lookupError){ %><div class="alert error"><%= lookupError %></div><% } %>
+  <form method="get" action="/ghsv-lookup" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <input name="code" value="<%= lookupCode||'' %>" placeholder="BEE000018" style="min-width:260px;text-transform:uppercase;" required>
+    <button class="btn" type="submit">🔎 Tra cứu</button>
+  </form>
+</div>
+<%- include('partials/footer') %>
