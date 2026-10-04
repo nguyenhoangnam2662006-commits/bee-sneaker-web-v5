@@ -1,0 +1,156 @@
+<%- include('partials/header') %>
+<div class="panel"><div class="table-wrap"><table>
+<thead><tr><th>Mã</th><% if(adminView){ %><th>CTV</th><% } %><th>Khách hàng</th><th>Địa chỉ</th><th>Sản phẩm</th><th>SL</th><th>Ship</th><th>COD</th><th>Gốc</th><th>Thuế</th><th>Lãi CTV</th><th><%= adminView ? 'Mã Bee / GHSV' : 'Mã nội bộ Bee' %></th><th>Xác nhận GHSV</th><th>Trạng thái</th></tr></thead>
+<tbody>
+<% if(!orders.length){ %><tr><td colspan="14" class="empty">Chưa có đơn hàng.</td></tr><% } %>
+<% orders.forEach(o=>{ const beeCode = `BEE${String(o.id).padStart(6,'0')}`; %><tr id="order-<%= o.id %>" class="<%= o.status==='Hủy'?'cancel-row':(o.status==='Hoàn'?'return-row':'') %> <%= (!adminView && o.stock_notice_ctv_seen===false)?'stock-alert-row':'' %>">
+<td>#<%= o.id %><small><%= new Date(o.created_at).toLocaleString('vi-VN') %></small></td>
+<% if(adminView){ %><td><%= o.ctv_name %></td><% } %>
+<td><b><%= o.customer_name %></b><small><%= o.phone %></small><% if(!adminView){ %><small><a class="text-link" href="/my-orders/<%= o.id %>/edit-customer">✏️ Sửa thông tin khách</a></small><% if(['Mới','Chờ xác nhận'].includes(o.status)){ %><small><a class="text-link danger-link" href="/my-orders/<%= o.id %>/cancel">✖ Hủy đơn</a></small><% } %><% } %></td>
+<td><%= o.address %></td>
+<td><b><%= o.product_name %></b><% if(o.items && o.items.length){ %><% o.items.forEach(it=>{ %><small>• <%= it.product_name %> · <%= variantLabel(it.product_variant) %> · Size <%= it.size %> · SL <%= it.quantity %></small><% }) %><% } else { %><small><%= o.product_variant ? variantLabel(o.product_variant)+' · ' : '' %>Size <%= o.size %></small><% if(o.variant_unit_price){ %><small>Gốc/đôi: <%= Number(o.variant_unit_price).toLocaleString('vi-VN') %>đ</small><% } %><% } %></td>
+<td><%= o.quantity %></td>
+<td><b><%= o.shipping_type==='customer_pay'?'Cộng ship':'Freeship' %></b><small><%= Number(o.shipping_fee||0).toLocaleString('vi-VN') %>đ</small></td>
+<td><b><%= Number(o.cod).toLocaleString('vi-VN') %>đ</b><small>Tiền hàng: <%= Number(o.base_cod||o.cod||0).toLocaleString('vi-VN') %>đ</small></td>
+<td>
+<b><%= Number(o.product_cost||0).toLocaleString('vi-VN') %>đ</b>
+<small>Phân loại hiện tại: <b><%= variantLabel(o.product_variant||'') || 'Chưa rõ' %></b></small>
+<% if(o.variant_unit_price){ %><small>Giá gốc/đôi hiện tại: <b><%= Number(o.variant_unit_price).toLocaleString('vi-VN') %>đ</b></small><% } %>
+<% if(o.variant_stock_status){ %>
+  <small class="stock-state <%= o.variant_stock_status==='Hết hàng'?'out':'in' %>"><%= o.variant_stock_status==='Hết hàng'?'⛔':'✅' %> <%= o.variant_stock_status %></small>
+<% } %>
+<% if(o.available_variants){ %><small class="stock-alt">Còn: <b><%= o.available_variants %></b></small><% } %>
+<% if(!adminView && o.stock_notice_ctv_seen===false){ %><span class="stock-new-badge">🔔 Shop vừa cập nhật hàng</span><% } %>
+<% if(!adminView && o.warehouse_status){ %><small><b>Kho:</b> <%= o.warehouse_status==='Đã xác nhận' ? '✅ Đã xác nhận còn hàng' : (o.warehouse_status==='Hết tất cả kho' ? '⛔ Hết tất cả kho' : '⏳ Đang kiểm tra kho') %></small><% } %>
+<% if(adminView){ %>
+<form action="/orders/<%= o.id %>/stock-note" method="post" class="stock-note-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <select name="variant_stock_status">
+    <option value="" <%= !o.variant_stock_status?'selected':'' %>>Chưa cập nhật</option>
+    <option value="Còn hàng" <%= o.variant_stock_status==='Còn hàng'?'selected':'' %>>✅ Còn hàng</option>
+    <option value="Hết hàng" <%= o.variant_stock_status==='Hết hàng'?'selected':'' %>>⛔ Hết hàng</option>
+  </select>
+  <input name="available_variants" value="<%= o.available_variants||'' %>" placeholder="Còn phân loại nào? VD: Best, Auth">
+  <% const vpMap = o.variant_prices || {}; const variantChoices = Object.keys(vpMap).filter(v=>Number(vpMap[v]||0)>0); %>
+  <% if(variantChoices.length){ %>
+  <select name="replacement_variant">
+    <option value="">-- Không đổi phân loại/giá --</option>
+    <% variantChoices.forEach(v=>{ %>
+      <option value="<%= v %>" <%= v===o.product_variant?'selected':'' %>><%= variantLabel(v) %> - <%= Number(vpMap[v]).toLocaleString('vi-VN') %>đ/đôi</option>
+    <% }) %>
+  </select>
+  <% } %>
+  <button class="btn small" type="submit">Báo CTV</button>
+</form>
+<small>Nếu đổi phân loại, Bee tự lấy đúng giá đã lưu trong sản phẩm, cập nhật <b>giá gốc + lãi CTV</b> và báo CTV.</small>
+
+<div class="zalo-warehouse-box">
+  <b>💬 Hỏi kho qua Zalo cá nhân</b>
+  <small><b>Kho hiện tại:</b> <%= o.warehouse_name||'Chưa gán kho ưu tiên' %> <% if(o.warehouse_status){ %>· <b><%= o.warehouse_status %></b><% } %></small>
+  <% if(!o.warehouse_name){ %><form action="/orders/<%= o.id %>/warehouse-auto-assign" method="post" style="margin:6px 0"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn small" type="submit">⚙️ Tự chọn kho ưu tiên</button></form><% } %>
+  <form action="/orders/<%= o.id %>/warehouse-contact" method="post" class="warehouse-contact-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input name="warehouse_name" value="<%= o.warehouse_name||'' %>" placeholder="Tên kho / đầu mối">
+    <input id="warehouse-phone-<%= o.id %>" name="warehouse_zalo_phone" value="<%= o.warehouse_zalo_phone||'' %>" placeholder="SĐT Zalo kho" inputmode="tel">
+    <button class="btn small" type="submit">Lưu kho</button>
+  </form>
+  <textarea id="warehouse-msg-<%= o.id %>" class="warehouse-message-template" readonly>Đơn <%= beeCode %>
+<% if(o.items && o.items.length){ o.items.forEach(it=>{ %><%= it.product_name %> - <%= variantLabel(it.product_variant) %> - Size <%= it.size %> - SL <%= it.quantity %>
+<% }) } else { %><%= o.product_name %> - <%= variantLabel(o.product_variant||'') %> - Size <%= o.size %> - SL <%= o.quantity %>
+<% } %>Còn hàng không? Trả lời CÓ/CÒN hoặc KHÔNG/HẾT.</textarea>
+  <div class="zalo-actions">
+    <button class="btn small" type="button" onclick="copyWarehouseMsg(<%= o.id %>)">📋 Copy tin</button>
+    <button class="btn small" type="button" onclick="openZaloWarehouse(<%= o.id %>)">💬 Copy + mở Zalo</button>
+  </div>
+  <small>Kho trả lời trong Zalo cá nhân. Sau đó bấm đúng phản hồi bên dưới để Bee báo CTV.</small>
+  <div class="warehouse-reply-actions">
+    <form action="/orders/<%= o.id %>/warehouse-reply" method="post">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="answer" value="có">
+      <button class="btn small warehouse-yes" type="submit">✅ Kho báo CÓ / CÒN</button>
+    </form>
+    <form action="/orders/<%= o.id %>/warehouse-reply" method="post">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="answer" value="hết">
+      <button class="btn small danger" type="submit">⛔ Kho báo KHÔNG / HẾT</button>
+    </form>
+  </div>
+</div>
+<% } %>
+</td>
+<td><%= Number(o.tax_amount||0).toLocaleString('vi-VN') %>đ</td>
+<td><b><%= Number(o.ctv_profit||0).toLocaleString('vi-VN') %>đ</b></td>
+<td>
+<% if(adminView){ %>
+<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+  <strong>Mã Bee:</strong> <code id="bee-code-<%= o.id %>" style="font-weight:700;"><%= beeCode %></code>
+  <button class="btn small" type="button" onclick="copyCode('bee-code-<%= o.id %>')">📋 Copy</button>
+</div>
+<div style="margin-bottom:6px;"><small>Mã GHSV/client_code đang lưu:</small> <code><%= o.tracking_code||'Chưa có' %></code></div>
+<form class="inline-edit" action="/orders/<%= o.id %>/admin-update" method="post">
+<input type="hidden" name="_csrf" value="<%= csrfToken %>">
+<input name="tracking_code" value="<%= o.tracking_code||'' %>" placeholder="client_code hoặc mã GHSV cũ">
+<button class="btn small">Lưu</button>
+</form>
+<small><% if(/^BEE\d{4,}$/i.test(o.tracking_code||'')){ %>Dán mã này vào ô <b>Mã đơn tùy chỉnh / client_code</b> khi tạo đơn trên GHSV.<% } else { %>Đơn cũ: Bee dùng mã GHSV/MVD đang lưu ở backend để đọc hành trình.<% } %></small>
+<% } else { %>
+<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+  <code id="bee-code-<%= o.id %>" style="font-weight:700;"><%= beeCode %></code>
+  <button class="btn small" type="button" onclick="copyCode('bee-code-<%= o.id %>')">📋 Copy</button>
+</div>
+<small>Mã nội bộ dùng để tra đơn trên Bee. Mã GHSV/B57 được ẩn.</small>
+<% } %>
+<small><a class="text-link" href="/orders/<%= o.id %>/ghsv">🔎 Tra GHSV</a></small>
+<small><a class="text-link" href="/support/new?order_id=<%= o.id %>">🎧 Yêu cầu CSKH</a></small>
+</td>
+<td>
+<% const ghsvConfirmed = ['Đã xác nhận','Đang giao','Hoàn thành','Hoàn','Hủy'].includes(o.status); %>
+<span class="ghsv-confirm <%= ghsvConfirmed ? 'confirmed' : 'pending' %>"><%= ghsvConfirmed ? '✓ Đã xác nhận' : '… Chưa xác nhận' %></span>
+</td>
+<td>
+<% if(adminView){ %>
+  <form action="/orders/<%= o.id %>/status" method="post" class="status-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <select name="status"><% ['Mới','Đã xác nhận','Đang giao','Hoàn thành','Hoàn','Hủy'].forEach(s=>{ %><option value="<%= s %>" <%= o.status===s?'selected':'' %>><%= s %></option><% }) %></select>
+    <button class="btn small" type="submit">Lưu trạng thái</button>
+  </form>
+  <% if(o.status==='Hủy'){ %>
+    <form action="/orders/<%= o.id %>/delete" method="post" class="delete-order-form" onsubmit="return confirm('Xóa vĩnh viễn đơn #<%= o.id %>? Thao tác này không thể hoàn tác.');">
+      <button class="btn danger small" type="submit">🗑 Xóa đơn</button>
+    </form>
+  <% } %>
+<% } else { %>
+<% const statusClass = o.status==='Hoàn thành' ? 'status-success' : (o.status==='Hoàn' || o.status==='Hủy' ? 'status-danger' : (o.status==='Đang giao' ? 'status-shipping' : (o.status==='Đã xác nhận' ? 'status-confirmed' : 'status-pending'))); %>
+<span class="order-status <%= statusClass %>"><%= o.status %></span>
+<% } %>
+<% if(o.status==='Hủy' && o.cancel_reason){ %><small><b>Lý do:</b> <%= o.cancel_reason %></small><% } %>
+</td>
+</tr><% }) %>
+</tbody></table></div></div>
+<script>
+async function copyCode(id){
+  const el=document.getElementById(id);
+  const code=(el?.textContent||'').trim();
+  if(!code || code==='Chưa có') return;
+  try { await navigator.clipboard.writeText(code); alert('Đã copy mã: '+code); }
+  catch(e){ window.prompt('Copy mã này:', code); }
+}
+async function copyWarehouseMsg(orderId){
+  const el=document.getElementById('warehouse-msg-'+orderId);
+  const msg=(el?.value||'').trim();
+  if(!msg) return;
+  try { await navigator.clipboard.writeText(msg); alert('Đã copy tin hỏi kho.'); }
+  catch(e){ window.prompt('Copy nội dung này:', msg); }
+}
+async function openZaloWarehouse(orderId){
+  const msgEl=document.getElementById('warehouse-msg-'+orderId);
+  const phoneEl=document.getElementById('warehouse-phone-'+orderId);
+  const msg=(msgEl?.value||'').trim();
+  let phone=(phoneEl?.value||'').replace(/\D/g,'');
+  if(phone.startsWith('84') && phone.length>=10) phone='0'+phone.slice(2);
+  if(!phone){ alert('Hãy nhập và lưu SĐT Zalo của kho trước.'); return; }
+  try { await navigator.clipboard.writeText(msg); } catch(e) {}
+  window.open('https://zalo.me/'+encodeURIComponent(phone), '_blank', 'noopener');
+}
+</script>
+<%- include('partials/footer') %>

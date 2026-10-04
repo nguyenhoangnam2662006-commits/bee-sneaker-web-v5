@@ -1,0 +1,35 @@
+<%- include('partials/header') %>
+<div class="panel">
+  <h2>🏬 Danh sách kho</h2>
+  <p class="muted">Tạo các kho/đầu mối một lần. Sau đó vào từng sản phẩm để xếp thứ tự ưu tiên Kho 1 → Kho 2 → Kho 3.</p>
+  <form action="/warehouses" method="post" class="form grid-form" style="margin-bottom:18px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Tên kho<input name="name" required placeholder="Ví dụ: Nam Sneaker"></label>
+    <label>SĐT Zalo kho<input name="zalo_phone" inputmode="tel" placeholder="Ví dụ: 0359573489"></label>
+    <label>ID kho GHSV (nếu có)<input name="ghsv_warehouse_id" placeholder="Ví dụ: 215233"></label>
+    <div class="form-actions"><button class="btn primary" type="submit">➕ Thêm kho</button></div>
+  </form>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Kho</th><th>Zalo</th><th>ID GHSV</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <tbody>
+      <% if(!warehouses.length){ %><tr><td colspan="5" class="empty">Chưa có kho nào.</td></tr><% } %>
+      <% warehouses.forEach(w=>{ %><tr>
+        <td colspan="5">
+          <form action="/warehouses/<%= w.id %>" method="post" class="warehouse-row-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input name="name" value="<%= w.name %>" required>
+            <input name="zalo_phone" value="<%= w.zalo_phone||'' %>" inputmode="tel" placeholder="SĐT Zalo">
+            <input name="ghsv_warehouse_id" value="<%= w.ghsv_warehouse_id||'' %>" placeholder="ID GHSV">
+            <label class="check"><input type="checkbox" name="is_active" <%= w.is_active?'checked':'' %>> Đang dùng</label>
+            <button class="btn small" type="submit">Lưu</button>
+          </form>
+          <form action="/warehouses/<%= w.id %>/delete" method="post" style="margin-top:6px" onsubmit="return confirm('Xóa kho này? Các ưu tiên gắn với kho cũng sẽ bị xóa.');">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="btn danger small" type="submit">Xóa kho</button>
+          </form>
+        </td>
+      </tr><% }) %>
+    </tbody>
+  </table></div>
+</div>
+<%- include('partials/footer') %>
