@@ -1,0 +1,59 @@
+<%- include('partials/header') %>
+<div class="panel">
+  <h2>🏬 Danh sách cửa hàng GHSV dùng chung</h2>
+  <p class="muted">Trang này chỉ để <b>đồng bộ danh sách cửa hàng + shop_id</b> từ GHSV. <b>Không đặt thứ tự ưu tiên chung ở đây.</b><br>Mỗi mẫu sẽ tự gán Kho 1 → Kho 2 → Kho 3 trong <b>Sửa sản phẩm → Địa chỉ lấy hàng / Kho ưu tiên</b>.</p>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:14px 0 20px">
+    <form action="/warehouses/sync-ghsv" method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label style="margin:0">Mã tỉnh (không bắt buộc)
+        <input name="province_code" placeholder="Để trống = lấy tất cả">
+      </label>
+      <button class="btn primary" type="submit" <%= ghsvConfigured?'':'disabled' %>>🔄 Đồng bộ cửa hàng GHSV</button>
+    </form>
+    <% if(!ghsvConfigured){ %><span class="muted">Chưa có GHSV_TOKEN trong Render Environment.</span><% } %>
+  </div>
+
+  <details style="margin-bottom:18px">
+    <summary><b>➕ Thêm kho thủ công (dự phòng)</b></summary>
+    <form action="/warehouses" method="post" class="form grid-form" style="margin-top:12px">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Tên kho<input name="name" required placeholder="Ví dụ: Nam Sneaker"></label>
+      <label>SĐT Zalo kho<input name="zalo_phone" inputmode="tel" placeholder="Ví dụ: 0359573489"></label>
+      <label>Shop ID GHSV<input name="ghsv_warehouse_id" placeholder="Ví dụ: 215233" required></label>
+      <div class="form-actions"><button class="btn" type="submit">➕ Thêm thủ công</button></div>
+    </form>
+  </details>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Kho</th><th>Shop ID GHSV</th><th>Địa chỉ GHSV</th><th>SĐT</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <tbody>
+      <% if(!warehouses.length){ %><tr><td colspan="6" class="empty">Chưa có kho nào. Bấm “Đồng bộ cửa hàng GHSV”.</td></tr><% } %>
+      <% warehouses.forEach(w=>{ %><tr>
+        <td><b><%= w.name %></b></td>
+        <td><code><%= w.ghsv_warehouse_id||'-' %></code></td>
+        <td>
+          <%= w.ghsv_address||'' %>
+          <% const loc=[w.ghsv_ward,w.ghsv_district,w.ghsv_province].filter(Boolean).join(', '); if(loc){ %><div class="muted"><%= loc %></div><% } %>
+        </td>
+        <td><%= w.zalo_phone||'-' %></td>
+        <td><%= w.is_active?'✅ Đang dùng':'⏸ Tạm ẩn' %></td>
+        <td>
+          <form action="/warehouses/<%= w.id %>" method="post" class="warehouse-row-form" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="hidden" name="name" value="<%= w.name %>">
+            <input type="hidden" name="ghsv_warehouse_id" value="<%= w.ghsv_warehouse_id||'' %>">
+            <input name="zalo_phone" value="<%= w.zalo_phone||'' %>" inputmode="tel" placeholder="SĐT Zalo" style="max-width:140px">
+            <label class="check"><input type="checkbox" name="is_active" <%= w.is_active?'checked':'' %>> Dùng</label>
+            <button class="btn small" type="submit">Lưu</button>
+          </form>
+          <form action="/warehouses/<%= w.id %>/delete" method="post" style="margin-top:6px" onsubmit="return confirm('Xóa kho này? Các ưu tiên gắn với kho cũng sẽ bị xóa.');">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="btn danger small" type="submit">Xóa</button>
+          </form>
+        </td>
+      </tr><% }) %>
+    </tbody>
+  </table></div>
+</div>
+<%- include('partials/footer') %>
