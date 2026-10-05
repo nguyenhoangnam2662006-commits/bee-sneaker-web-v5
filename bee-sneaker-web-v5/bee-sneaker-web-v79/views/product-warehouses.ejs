@@ -1,0 +1,28 @@
+<%- include('partials/header') %>
+<div class="panel">
+  <div class="toolbar"><a class="btn" href="/products/<%= product.id %>">← <%= product.name %></a><a class="btn" href="/warehouses">🏬 Quản lý kho</a></div>
+  <h2>Ưu tiên kho cho: <%= product.name %></h2>
+  <p class="muted">Ví dụ: <b>Best</b> có thể lấy Kho A → B, còn <b>Siêu Cấp</b> lấy Kho C → D. Có thể dùng <b>*</b> cho mọi phân loại/size hoặc gán riêng từng phân loại + size.</p>
+  <form action="/products/<%= product.id %>/warehouses" method="post" id="warehouseRulesForm">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div id="ruleRows">
+      <% const variants=Object.entries(product?.variant_prices||{}).filter(([,v])=>Number(v||0)>0).map(([k])=>k); const list = rules.length ? rules : [{warehouse_id:'',variant:'*',size:'*',priority:1}]; list.forEach((r,i)=>{ %>
+      <div class="warehouse-rule-row">
+        <select name="warehouse_id" required>
+          <option value="">-- Chọn kho --</option>
+          <% warehouses.filter(w=>w.is_active).forEach(w=>{ %><option value="<%= w.id %>" <%= Number(r.warehouse_id)===Number(w.id)?'selected':'' %>><%= w.name %> <%= w.zalo_phone?('· '+w.zalo_phone):'' %></option><% }) %>
+        </select>
+        <select name="rule_variant" required><option value="*" <%= (r.variant||'*')==='*'?'selected':'' %>>* · Tất cả phân loại</option><% variants.forEach(v=>{ %><option value="<%= v %>" <%= String(r.variant||'')===String(v)?'selected':'' %>><%= variantLabel(v) %></option><% }) %></select>
+        <input name="rule_size" value="<%= r.size||'*' %>" placeholder="Size hoặc *">
+        <input name="priority" type="number" min="1" max="999" value="<%= r.priority||i+1 %>" placeholder="Ưu tiên">
+        <button class="btn danger small" type="button" onclick="this.closest('.warehouse-rule-row').remove()">Xóa</button>
+      </div>
+      <% }) %>
+    </div>
+    <div class="form-actions" style="margin-top:12px"><button class="btn" type="button" id="addRuleBtn">+ Thêm kho ưu tiên</button><button class="btn primary" type="submit">Lưu thứ tự kho</button></div>
+  </form>
+  <div class="panel" style="margin-top:18px;padding:14px"><b>Test logic:</b><br>Bee sẽ hỏi kho có ưu tiên thấp nhất trước. Nếu bấm <b>KHÔNG/HẾT</b> ở đơn hàng, Bee tự chuyển sang kho tiếp theo. Nếu bấm <b>CÓ/CÒN</b>, Bee chốt kho đó và báo CTV.</div>
+</div>
+<template id="ruleTpl"><div class="warehouse-rule-row"><select name="warehouse_id" required><option value="">-- Chọn kho --</option><% warehouses.filter(w=>w.is_active).forEach(w=>{ %><option value="<%= w.id %>"><%= w.name %> <%= w.zalo_phone?('· '+w.zalo_phone):'' %></option><% }) %></select><select name="rule_variant" required><option value="*">* · Tất cả phân loại</option><% variants.forEach(v=>{ %><option value="<%= v %>"><%= variantLabel(v) %></option><% }) %></select><input name="rule_size" value="*" placeholder="Size hoặc *"><input name="priority" type="number" min="1" max="999" value="1" placeholder="Ưu tiên"><button class="btn danger small" type="button" onclick="this.closest('.warehouse-rule-row').remove()">Xóa</button></div></template>
+<script>document.getElementById('addRuleBtn').addEventListener('click',()=>{const t=document.getElementById('ruleTpl');document.getElementById('ruleRows').appendChild(t.content.cloneNode(true));});</script>
+<%- include('partials/footer') %>
