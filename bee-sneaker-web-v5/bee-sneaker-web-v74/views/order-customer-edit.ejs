@@ -1,0 +1,62 @@
+<%- include('partials/header') %>
+<div class="panel form-panel">
+  <div class="panel-head">
+    <div>
+      <h2>Sửa thông tin khách hàng</h2>
+      <p class="muted">Đơn #<%= order.id %> · <%= order.product_name %><%= order.product_variant ? ' · '+variantLabel(order.product_variant) : '' %> · Size <%= order.size %></p>
+    </div>
+    <a class="btn" href="/my-orders">Quay lại đơn của tôi</a>
+  </div>
+
+  <form method="post" action="/my-orders/<%= order.id %>/edit-customer" class="form-grid">
+    <label class="full">Tên khách hàng
+      <input name="customer_name" maxlength="150" required value="<%= order.customer_name %>">
+    </label>
+    <label>Số điện thoại
+      <input name="phone" maxlength="30" required value="<%= order.phone %>">
+    </label>
+    <label class="full">Địa chỉ khách hàng
+      <textarea name="address" maxlength="1000" required rows="4"><%= order.address %></textarea>
+    </label>
+    <label>Tỉnh/Thành GHSV
+      <select id="ghsvProvinceCode" name="ghsv_province_code" required><option value="">-- Chọn Tỉnh/Thành --</option></select>
+      <input type="hidden" name="ghsv_to_province" id="ghsvProvinceName" value="<%= order.ghsv_to_province||'' %>">
+    </label>
+    <label>Quận/Huyện GHSV
+      <select id="ghsvDistrictCode" name="ghsv_district_code" required><option value="">-- Chọn Quận/Huyện --</option></select>
+      <input type="hidden" name="ghsv_to_district" id="ghsvDistrictName" value="<%= order.ghsv_to_district||'' %>">
+    </label>
+    <label>Phường/Xã GHSV
+      <select id="ghsvWardCode" name="ghsv_ward_code" required><option value="">-- Chọn Phường/Xã --</option></select>
+      <input type="hidden" name="ghsv_to_ward" id="ghsvWardName" value="<%= order.ghsv_to_ward||'' %>">
+    </label>
+    <label class="full">Ghi chú
+      <textarea name="note" maxlength="2000" rows="4"><%= order.note || '' %></textarea>
+    </label>
+    <div class="full form-actions">
+      <a class="btn" href="/my-orders">Hủy</a>
+      <button class="btn primary" type="submit">Lưu thông tin khách hàng</button>
+    </div>
+  </form>
+
+  <div class="notice info" style="margin-top:16px">
+    CTV chỉ có thể sửa thông tin khách hàng của đơn do chính mình tạo. Sản phẩm, phân loại, size, số lượng, COD và lãi không bị thay đổi ở màn hình này.
+  </div>
+</div>
+<script>
+(async function(){
+  const p=document.getElementById('ghsvProvinceCode'),d=document.getElementById('ghsvDistrictCode'),w=document.getElementById('ghsvWardCode');
+  const pn=document.getElementById('ghsvProvinceName'),dn=document.getElementById('ghsvDistrictName'),wn=document.getElementById('ghsvWardName');
+  const initial={p:<%- JSON.stringify(order.ghsv_province_code||'') %>,d:<%- JSON.stringify(order.ghsv_district_code||'') %>,w:<%- JSON.stringify(order.ghsv_ward_code||'') %>};
+  const fill=(el,rows,placeholder)=>{el.innerHTML=`<option value="">${placeholder}</option>`;for(const x of rows||[]){const o=document.createElement('option');o.value=x.code;o.textContent=x.name;o.dataset.name=x.name;el.appendChild(o)}};
+  try{
+    let r=await fetch('/api/ghsv-address/provinces'),j=await r.json();fill(p,j.provinces,'-- Chọn Tỉnh/Thành --');p.value=initial.p;
+    if(initial.p){r=await fetch('/api/ghsv-address/districts?province_code='+encodeURIComponent(initial.p));j=await r.json();fill(d,j.districts,'-- Chọn Quận/Huyện --');d.value=initial.d;}
+    if(initial.d){r=await fetch('/api/ghsv-address/wards?district_code='+encodeURIComponent(initial.d));j=await r.json();fill(w,j.wards,'-- Chọn Phường/Xã --');w.value=initial.w;}
+  }catch(e){}
+  p.addEventListener('change',async()=>{pn.value=p.options[p.selectedIndex]?.dataset?.name||'';dn.value='';wn.value='';fill(d,[],'Đang tải...');fill(w,[],'-- Chọn Phường/Xã --');if(!p.value)return;const r=await fetch('/api/ghsv-address/districts?province_code='+encodeURIComponent(p.value));const j=await r.json();fill(d,j.districts,'-- Chọn Quận/Huyện --')});
+  d.addEventListener('change',async()=>{dn.value=d.options[d.selectedIndex]?.dataset?.name||'';wn.value='';fill(w,[],'Đang tải...');if(!d.value)return;const r=await fetch('/api/ghsv-address/wards?district_code='+encodeURIComponent(d.value));const j=await r.json();fill(w,j.wards,'-- Chọn Phường/Xã --')});
+  w.addEventListener('change',()=>{wn.value=w.options[w.selectedIndex]?.dataset?.name||''});
+})();
+</script>
+<%- include('partials/footer') %>
