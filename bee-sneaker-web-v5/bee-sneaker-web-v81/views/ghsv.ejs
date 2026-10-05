@@ -1,0 +1,67 @@
+<%- include('partials/header') %>
+<div class="panel"><div class="panel-head"><div><h2>Tra cứu GHSV · Đơn #<%= order.id %></h2>
+<p>Mã nội bộ Bee: <b><%= beeCode %></b></p>
+<% if (user && user.role === 'admin') { %>
+  <% if (legacyMode) { %>
+    <p style="margin-top:4px;color:#64748b;">Mã GHSV đơn cũ đang lưu: <b><%= order.tracking_code %></b></p>
+  <% } else { %>
+    <p style="margin-top:4px;color:#64748b;">Client code GHSV: <b><%= order.tracking_code %></b></p>
+    <% if (codeMap && codeMap.required_code) { %><p style="margin-top:4px;color:#64748b;">Mã GHSV đã nhận: <b><%= codeMap.required_code %></b></p><% } %>
+  <% } %>
+<% } else { %>
+  <p style="margin-top:4px;color:#64748b;">Bạn chỉ cần mã nội bộ Bee để tra cứu. Mã GHSV/B57 được ẩn.</p>
+<% } %>
+</div><a class="btn" href="/support/new?order_id=<%= order.id %>">🎧 Tạo yêu cầu CSKH</a></div>
+<% if(!configured){ %><div class="alert error">Chưa có kết nối GHSV phù hợp cho đơn này.</div><% } %>
+<% if(configured && user && user.role==='admin' && ghsvAccountName){ %><div class="alert success">Đang tra bằng: <b><%= ghsvAccountName %></b></div><% } %>
+<% if(error){ %><div class="alert error"><%= error %></div><% } %>
+<% if(trackingError){ %><div class="alert"><%= trackingError %></div><% } %>
+<div class="stats">
+  <div class="stat"><span>Trạng thái GHSV</span><strong><%= info.status||'Chưa lấy được' %></strong></div>
+  <div class="stat"><span>COD</span><strong><%= info.cod!=null?Number(info.cod).toLocaleString('vi-VN')+'đ':'-' %></strong></div>
+  <div class="stat"><span><%= user && user.role === 'admin' ? 'Phí ship Bee Sneaker' : 'Phí ship' %></span><strong><%= Number(order.shipping_fee||0).toLocaleString('vi-VN') %>đ</strong></div>
+  <% if (user && user.role === 'admin') { %>
+    <div class="stat"><span>Phí GHSV thực tế</span><strong><%= ghsvFee!=null?Number(ghsvFee).toLocaleString('vi-VN')+'đ':'-' %></strong><small>Chỉ chủ shop nhìn thấy</small></div>
+  <% } %>
+  <div class="stat"><span>Shipper</span><strong><%= shipper.name||'GHSV chưa cung cấp tên shipper' %></strong><small><b>SĐT shipper:</b> <%= shipper.phone||'GHSV chưa cung cấp' %></small></div>
+</div>
+</div>
+<div class="panel"><h2>Hành trình đơn</h2><div class="table-wrap"><table><thead><tr><th>Thời gian</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead><tbody><% if(!tracking.length){ %><tr><td colspan="3" class="empty">Chưa có dữ liệu hành trình.</td></tr><% } %><% tracking.forEach(x=>{ %><tr><td><%= x.time||x.created_at||'-' %></td><td><b><%= x.status||'-' %></b></td><td><%= x.note||'-' %></td></tr><% }) %></tbody></table></div></div>
+
+<% if (user && user.role === 'admin') { %>
+  <div class="card" style="margin-top:16px;padding:16px;">
+    <h3 style="margin-top:0;">Đồng bộ GHSV tự động</h3>
+    <% if (legacyMode) { %>
+      <p style="margin:6px 0;color:#64748b;">Đây là <strong>đơn cũ</strong>. Bee dùng mã GHSV/MVD đang lưu để đọc hành trình và lấy trạng thái cuối cùng. Nếu hành trình báo giao thành công/hoàn/hủy, Bee sẽ tự cập nhật trạng thái đơn và phần lãi.</p>
+    <% } else { %>
+      <p style="margin:6px 0;color:#64748b;">Đơn mới dùng <strong>client_code do Bee tự sinh</strong>. Khi tạo đơn trên GHSV, chủ shop dán đúng mã này vào ô <strong>Mã đơn tùy chỉnh / client_code</strong>.</p>
+      <% if (codeMap && codeMap.required_code) { %>
+        <p style="margin:8px 0 0;">API đã trả mã GHSV: <strong><%= codeMap.client_code %></strong> → <strong><%= codeMap.required_code %></strong></p>
+      <% } else { %>
+        <p style="margin:8px 0 0;color:#b45309;">Chưa nhận được required_code từ API. Bee vẫn tra trạng thái bằng client_code.</p>
+      <% } %>
+    <% } %>
+  </div>
+<% } %>
+
+
+<% if (user && user.role === 'admin' && ghsvDebug) { %>
+  <div class="card" style="margin-top:16px;padding:16px;">
+    <details>
+      <summary style="cursor:pointer;font-weight:800;">🧪 V81 Debug GHSV — xem field shipper mà API thực tế trả về</summary>
+      <p style="margin:10px 0;color:#64748b;">Khối này chỉ Admin thấy. Token/auth và thông tin khách đã được che; số điện thoại trong debug chỉ hiện dạng rút gọn. Bee V81 đồng thời quét raw response để tự nhận diện các field shipper/driver/courier mới.</p>
+      <% if (ghsvDebug.auto_detected_shipper && (ghsvDebug.auto_detected_shipper.name || ghsvDebug.auto_detected_shipper.phone)) { %>
+        <div class="alert success" style="margin:10px 0;">
+          <b>Bee tự phát hiện:</b>
+          <%= ghsvDebug.auto_detected_shipper.name || 'chưa có tên' %>
+          <% if (ghsvDebug.auto_detected_shipper.phone) { %> · <%= ghsvDebug.auto_detected_shipper.phone %><% } %>
+        </div>
+      <% } else { %>
+        <div class="alert" style="margin:10px 0;">Chưa phát hiện được SĐT shipper trong raw response hiện tại. Mở phần JSON bên dưới và gửi ảnh đoạn <b>shipper_candidate_paths</b> cho tao.</div>
+      <% } %>
+      <pre style="white-space:pre-wrap;word-break:break-word;max-height:620px;overflow:auto;background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;font-size:12px;"><%= JSON.stringify(ghsvDebug, null, 2) %></pre>
+    </details>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>
