@@ -2214,7 +2214,7 @@ process.on('uncaughtException', err => console.error('Uncaught exception:', err)
 
 (async () => {
   // V73: bind PORT ngay. Render không phải chờ DB migration hay GHSV sync mới thấy service online.
-  server = app.listen(PORT, '0.0.0.0', () => console.log(`Bee Sneaker V78 đang chạy trên cổng ${PORT}`));
+  server = app.listen(PORT, '0.0.0.0', () => console.log(`Bee Sneaker V79 đang chạy trên cổng ${PORT}`));
   server.keepAliveTimeout = 65000;
   server.headersTimeout = 66000;
   server.requestTimeout = 30000;

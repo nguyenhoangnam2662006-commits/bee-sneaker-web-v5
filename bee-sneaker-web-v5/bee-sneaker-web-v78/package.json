@@ -1,7 +1,7 @@
 {
   "name": "bee-sneaker-web",
-  "version": "7.8.0",
-  "description": "Bee Sneaker V78 - Drop return fee 20k, shot-order return fee 45k",
+  "version": "7.9.0",
+  "description": "Bee Sneaker V79 - fix database migration for warehouse variant rules",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

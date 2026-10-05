@@ -193,7 +193,8 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(product_id, warehouse_id, size, variant)
     );
-    CREATE INDEX IF NOT EXISTS idx_product_warehouse_rules_lookup ON product_warehouse_rules(product_id,variant,size,priority,id);
+    -- IMPORTANT: variant may not exist yet on databases created before V77.
+    -- Create indexes that use variant only after the ALTER TABLE migration below.
 
     CREATE TABLE IF NOT EXISTS app_settings (
       key VARCHAR(120) PRIMARY KEY,
