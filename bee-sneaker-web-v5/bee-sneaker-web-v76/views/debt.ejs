@@ -1,0 +1,35 @@
+<%- include('partials/header') %>
+<div class="stats">
+  <div class="stat"><span>Tổng công nợ phát sinh</span><strong><%= Number(totals.total||0).toLocaleString('vi-VN') %>đ</strong></div>
+  <div class="stat"><span>Đã thu</span><strong><%= Number(totals.paid||0).toLocaleString('vi-VN') %>đ</strong></div>
+  <div class="stat"><span>Còn phải thu</span><strong class="danger-text"><%= Number(totals.outstanding||0).toLocaleString('vi-VN') %>đ</strong></div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>💳 Công nợ CTV Drop</h2>
+      <p>Chỉ tính các đơn được Bee tạo bằng <b>tài khoản GHSV riêng của CTV</b>. Hoàn thành = tiền gốc phải trả shop; Hoàn = phí hoàn theo rule Bee; Hủy/chưa chốt = chưa phát sinh công nợ.</p>
+    </div>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>CTV</th><th>Đơn Drop</th><th>Hoàn thành</th><th>Hoàn</th><th>Công nợ phát sinh</th><th>Đã thu</th><th>Còn nợ</th><th>Chưa thu</th><th></th></tr></thead>
+    <tbody>
+      <% if(!rows.length){ %><tr><td colspan="9" class="empty">Chưa có CTV.</td></tr><% } %>
+      <% rows.forEach(r=>{ %>
+        <tr>
+          <td><b><%= r.full_name %></b><small><%= r.phone || r.username %></small></td>
+          <td><%= r.drop_orders %></td>
+          <td><%= r.completed_orders %></td>
+          <td><%= r.returned_orders %></td>
+          <td><b><%= Number(r.debt_total||0).toLocaleString('vi-VN') %>đ</b></td>
+          <td><%= Number(r.debt_paid||0).toLocaleString('vi-VN') %>đ</td>
+          <td><b class="<%= Number(r.debt_outstanding||0)>0?'danger-text':'' %>"><%= Number(r.debt_outstanding||0).toLocaleString('vi-VN') %>đ</b></td>
+          <td><% if(r.debt_unpaid_orders>0){ %><span class="badge"><%= r.debt_unpaid_orders %> đơn</span><% } else { %><span class="badge neutral">0</span><% } %></td>
+          <td><a class="btn small" href="/debt/<%= r.id %>">Xem công nợ</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+</div>
+<%- include('partials/footer') %>

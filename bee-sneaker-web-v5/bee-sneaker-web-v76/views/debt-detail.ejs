@@ -1,0 +1,60 @@
+<%- include('partials/header') %>
+<div class="panel">
+  <div class="panel-head">
+    <div>
+      <h2><%= user.full_name %> · Công nợ Drop</h2>
+      <p><%= user.phone || user.username %> · Chỉ các đơn tạo bằng tài khoản GHSV riêng của CTV này mới xuất hiện ở đây.</p>
+    </div>
+    <form method="post" action="/debt/<%= user.id %>/settle-all" onsubmit="return confirm('Đánh dấu toàn bộ công nợ đang chờ là ĐÃ THU?')">
+      <button class="btn primary" <%= summary.unpaid_orders===0?'disabled':'' %>>✓ Đã thu tất cả (<%= summary.unpaid_orders %> đơn)</button>
+    </form>
+  </div>
+  <div class="stats">
+    <div class="stat"><span>Đơn Drop</span><strong><%= summary.total_orders %></strong></div>
+    <div class="stat"><span>Hoàn thành</span><strong><%= summary.completed_orders %></strong></div>
+    <div class="stat"><span>Đơn hoàn</span><strong><%= summary.returned_orders %></strong></div>
+    <div class="stat"><span>Công nợ phát sinh</span><strong><%= Number(summary.debt_total||0).toLocaleString('vi-VN') %>đ</strong></div>
+    <div class="stat"><span>Đã thu</span><strong><%= Number(summary.debt_paid||0).toLocaleString('vi-VN') %>đ</strong></div>
+    <div class="stat"><span>Còn nợ</span><strong class="danger-text"><%= Number(summary.debt_outstanding||0).toLocaleString('vi-VN') %>đ</strong><small><%= summary.unpaid_orders %> đơn</small></div>
+  </div>
+</div>
+
+<form id="batchDebtForm" method="post" action="/debt/<%= user.id %>/settle-selected"></form>
+<div class="panel">
+  <div class="panel-head"><div><h2>Từng đơn công nợ</h2><p>Hoàn thành: thu tiền gốc. Hoàn: thu phí hoàn. Có thể tích nhiều đơn rồi đánh dấu đã thu một lần.</p></div></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Chọn thu</th><th>Mã đơn</th><th>Khách</th><th>Sản phẩm</th><th>GHSV</th><th>Trạng thái</th><th>Công nợ</th><th>Trạng thái thu</th></tr></thead>
+    <tbody>
+      <% if(!orders.length){ %><tr><td colspan="8" class="empty">CTV này chưa có đơn Drop bằng GHSV riêng.</td></tr><% } %>
+      <% orders.forEach(o=>{ const due=Number(o.debt_amount||0); const eligible=['Hoàn thành','Hoàn'].includes(o.status) && due>0; %>
+        <tr class="<%= o.status==='Hoàn'?'return-row':(o.status==='Hủy'?'cancel-row':'') %>">
+          <td><% if(eligible && !o.ctv_debt_paid){ %><input form="batchDebtForm" type="checkbox" name="order_ids" value="<%= o.id %>"><% } %></td>
+          <td><a class="order-link" href="/orders#order-<%= o.id %>"><b>#<%= o.id %></b></a><small><%= new Date(o.created_at).toLocaleString('vi-VN') %></small></td>
+          <td><b><%= o.customer_name %></b><small><%= o.phone %></small></td>
+          <td><b><%= o.product_name %></b><% if(o.items&&o.items.length){ o.items.forEach(it=>{ %><small>• <%= it.product_name %> · <%= variantLabel(it.product_variant) %> · <%= it.size %> × <%= it.quantity %></small><% }) } %></td>
+          <td><small><%= o.ghsv_required_code || o.ghsv_order_code || o.tracking_code || '—' %></small></td>
+          <td><span class="badge"><%= o.status %></span></td>
+          <td>
+            <% if(o.status==='Hoàn thành'){ %><b><%= due.toLocaleString('vi-VN') %>đ</b><small>Tiền gốc phải trả shop</small>
+            <% } else if(o.status==='Hoàn'){ %><b class="danger-text"><%= due.toLocaleString('vi-VN') %>đ</b><small>Phí hoàn · <%= Number(o.quantity||1) %> đôi</small>
+            <% } else { %><span class="badge neutral">Chưa phát sinh</span><% } %>
+          </td>
+          <td>
+            <% if(eligible){ %>
+              <form method="post" action="/debt/<%= user.id %>/orders/<%= o.id %>/status">
+                <input type="hidden" name="debt_status" value="<%= o.ctv_debt_paid?'paid':'unpaid' %>">
+                <label class="profit-toggle <%= o.ctv_debt_paid?'success':'pending' %>">
+                  <input type="checkbox" <%= o.ctv_debt_paid?'checked':'' %> onchange="this.form.debt_status.value=this.checked?'paid':'unpaid';this.form.submit()">
+                  <span><%= o.ctv_debt_paid?'Đã thu':'Chưa thu' %></span>
+                </label>
+                <% if(o.ctv_debt_paid){ %><small><%= o.ctv_debt_paid_at ? new Date(o.ctv_debt_paid_at).toLocaleString('vi-VN') : '' %></small><small><%= o.debt_settlement_code || '' %></small><% } %>
+              </form>
+            <% } else { %><span class="badge neutral">Chờ chốt đơn</span><% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <div style="margin-top:16px"><button form="batchDebtForm" class="btn primary" <%= summary.unpaid_orders===0?'disabled':'' %>>Đánh dấu ĐÃ THU các đơn đã chọn</button></div>
+</div>
+<%- include('partials/footer') %>
