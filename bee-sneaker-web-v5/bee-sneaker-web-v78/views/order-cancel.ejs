@@ -1,0 +1,16 @@
+<%- include('partials/header') %>
+<div class="panel form-panel">
+  <div class="panel-head"><h2>Hủy đơn #<%= order.id %></h2></div>
+  <p><b>Khách:</b> <%= order.customer_name %> · <%= order.phone %></p>
+  <p><b>Sản phẩm:</b> <%= order.product_name %></p>
+  <p><b>COD:</b> <%= Number(order.cod||0).toLocaleString('vi-VN') %>đ</p>
+  <form method="post" action="/my-orders/<%= order.id %>/cancel">
+    <label>Lý do hủy đơn</label>
+    <textarea name="cancel_reason" rows="4" maxlength="1000" required placeholder="Ví dụ: khách đổi ý, khách đặt nhầm size..."></textarea>
+    <div class="form-actions">
+      <a class="btn" href="/my-orders">Quay lại</a>
+      <button class="btn danger" type="submit" onclick="return confirm('Xác nhận hủy đơn này?')">Xác nhận hủy đơn</button>
+    </div>
+  </form>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+<div class="panel"><div class="panel-head"><div><h2><%= user.full_name %></h2><p>SĐT đối soát: <b><%= user.phone || user.username %></b></p></div><form method="post" action="/ctv/<%= user.id %>/settle-all" onsubmit="return confirm('Đánh dấu tất cả đơn Hoàn thành/Hoàn đang chờ là Lãi thành công?')"><button class="btn primary" <%= summary.unpaid_orders===0?'disabled':'' %>>✓ Lãi thành công tất cả (<%= summary.unpaid_orders %> đơn)</button></form></div>
+<div class="stats"><div class="stat"><span>Tổng đơn</span><strong><%= summary.total_orders %></strong></div><div class="stat"><span>Hoàn thành</span><strong><%= summary.completed_orders %></strong></div><div class="stat"><span>Đơn hoàn</span><strong><%= summary.returned_orders %></strong></div><div class="stat"><span>Đơn hủy</span><strong><%= summary.cancelled_orders %></strong></div><div class="stat"><span>Chưa lãi thành công</span><strong><%= Number(summary.unpaid_profit).toLocaleString('vi-VN') %>đ</strong><small><%= summary.unpaid_orders %> đơn</small></div><div class="stat"><span>Lãi thành công</span><strong><%= Number(summary.paid_profit).toLocaleString('vi-VN') %>đ</strong><small><%= summary.paid_orders %> đơn</small></div><div class="stat"><span>Lãi đối soát toàn bộ</span><strong><%= Number(summary.profit).toLocaleString('vi-VN') %>đ</strong></div></div></div>
+
+<form id="batchProfitForm" method="post" action="/ctv/<%= user.id %>/settle-selected"></form>
+<div class="panel"><div class="panel-head"><div><h2>Từng đơn của CTV</h2><p>Bấm mã đơn để mở đúng đơn bên trang Đơn hàng. Cột cuối có thể tích để đổi giữa Lãi thành công và Chưa lãi thành công.</p></div></div>
+<div class="table-wrap"><table><thead><tr><th>Chọn trả</th><th>Mã đơn hàng</th><th>Khách</th><th>Sản phẩm</th><th>COD</th><th>Trạng thái đơn</th><th>Lãi đối soát</th><th>Trạng thái lãi</th></tr></thead><tbody>
+<% if(!orders.length){ %><tr><td colspan="8" class="empty">CTV chưa có đơn.</td></tr><% } %>
+<% orders.forEach(o=>{ const rec=Number(o.reconciled_profit||0); const eligible=['Hoàn thành','Hoàn'].includes(o.status); %>
+<tr class="<%= o.status==='Hoàn'?'return-row':(o.status==='Hủy'?'cancel-row':'') %>">
+<td><% if(eligible && !o.ctv_paid){ %><input form="batchProfitForm" type="checkbox" name="order_ids" value="<%= o.id %>" title="Chọn để đánh dấu Lãi thành công"><% } %></td>
+<td><a class="order-link" href="/orders#order-<%= o.id %>"><b>#<%= o.id %></b></a><small><%= new Date(o.created_at).toLocaleString('vi-VN') %></small><small><a class="text-link" href="/orders#order-<%= o.id %>">Mở đơn hàng ↗</a></small></td>
+<td><b><%= o.customer_name %></b><small><%= o.phone %></small></td>
+<td><b><%= o.product_name %></b><% if(o.items&&o.items.length){o.items.forEach(it=>{ %><small>• <%= it.product_name %> · <%= variantLabel(it.product_variant) %> · <%= it.size %> × <%= it.quantity %></small><% })} %></td>
+<td><%= Number(o.cod||0).toLocaleString('vi-VN') %>đ</td>
+<td><span class="badge"><%= o.status %></span></td>
+<td><b class="<%= rec<0?'danger-text':'' %>"><%= rec.toLocaleString('vi-VN') %>đ</b><% if(o.status==='Hoàn'){ const isDrop=Number(o.ghsv_owner_ctv_id||0)===Number(o.ctv_id||0); %><small><%= isDrop?'Drop tự tạo đơn':'Bắn đơn' %> · Phí hoàn -<%= Number(o.return_fee_amount||0).toLocaleString('vi-VN') %>đ</small><% } else if(o.status==='Hủy'){ %><small>Không tính lãi</small><% } %></td>
+<td>
+<% if(eligible){ %>
+  <form method="post" action="/ctv/<%= user.id %>/orders/<%= o.id %>/profit-status" class="profit-toggle-form">
+    <input type="hidden" name="profit_status" value="<%= o.ctv_paid?'success':'pending' %>">
+    <label class="profit-toggle <%= o.ctv_paid?'success':'pending' %>">
+      <input type="checkbox" <%= o.ctv_paid?'checked':'' %> onchange="this.form.profit_status.value=this.checked?'success':'pending';this.form.submit()">
+      <span><%= o.ctv_paid?'Lãi thành công':'Chưa lãi thành công' %></span>
+    </label>
+    <% if(o.ctv_paid){ %><small><%= o.ctv_paid_at ? new Date(o.ctv_paid_at).toLocaleString('vi-VN') : '' %></small><small><%= o.settlement_code || '' %></small><% } %>
+  </form>
+<% } else { %><span class="badge neutral">Chưa lãi thành công</span><small>Chờ đơn Hoàn thành/Hoàn</small><% } %>
+</td></tr><% }) %>
+</tbody></table></div>
+<div style="margin-top:16px"><button form="batchProfitForm" class="btn primary" <%= summary.unpaid_orders===0?'disabled':'' %>>Đánh dấu Lãi thành công các đơn đã chọn</button></div>
+</div>
+<%- include('partials/footer') %>

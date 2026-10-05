@@ -1,0 +1,158 @@
+<%- include('partials/header') %>
+<% const vp = product?.variant_prices || {}; const ss = product?.size_stock || {}; %>
+<div class="panel form-panel">
+<form action="<%= product ? '/products/'+product.id : '/products' %>" method="post" enctype="multipart/form-data" class="form grid-form">
+  <label class="full">Tên sản phẩm<input name="name" value="<%= product?.name || '' %>" required></label>
+  <label class="full">Dòng sản phẩm / Nhóm mẫu<input name="product_group" value="<%= product?.product_group || '' %>" placeholder="Ví dụ: Samba, Onitsuka Tiger, Air Force 1, Jordan..."><small>Dùng để gom các mẫu cùng dòng lại thành một nhóm dễ tìm ở trang Sản phẩm.</small></label>
+  <label>Mã sản phẩm (SKU)<input name="sku" value="<%= product?.sku || '' %>"></label>
+  <label>Size<input id="sizeInput" name="size" value="<%= product?.size || '' %>" placeholder="Ví dụ: 38, 39, 40, 41"></label>
+
+  <div class="full panel" style="padding:16px">
+    <strong>Tồn kho theo từng size</strong>
+    <small style="display:block;margin-top:4px">Có thể nhập size bằng dấu cách hoặc dấu phẩy, ví dụ: 36 37 38 39 40. Mỗi size sẽ có ô tồn kho riêng. Size = 0 sẽ hiện “Hết size”.</small>
+    <div id="sizeStockGrid" class="size-stock-grid" data-stock='<%- JSON.stringify(ss) %>'></div>
+  </div>
+
+  <div class="full panel" style="padding:16px">
+    <strong>Phân loại hàng & giá gốc</strong>
+    <small style="display:block;margin-top:4px">Nhập giá riêng cho từng chất lượng. Giá 0 nghĩa là mẫu này không có phân loại đó.</small>
+    <div class="grid-form" style="margin-top:12px">
+      <label>Loại A<input type="number" min="0" name="price_like_auth" value="<%= Number(vp['Like Auth'] || 0) %>" placeholder="Ví dụ: 320000"></label>
+      <label>Siêu Cấp<input type="number" min="0" name="price_sieu_cap" value="<%= Number(vp['Siêu Cấp'] || 0) %>" placeholder="Ví dụ: 380000"></label>
+      <label>Best<input type="number" min="0" name="price_best" value="<%= Number(vp['Best'] || product?.price || 0) %>" placeholder="Ví dụ: 450000"></label>
+    </div>
+  </div>
+
+  <div><label>Tổng tồn hiện tại<input value="<%= product?.quantity || 0 %> đôi" readonly></label></div>
+
+  <label class="full">Ảnh đại diện sản phẩm
+    <input type="file" name="image" accept="image/*">
+    <small>Ảnh này sẽ hiện ngoài danh sách sản phẩm.</small>
+  </label>
+  <% if(product?.image){ %><div class="full preview"><img src="<%= product.image %>" alt="Ảnh đại diện"></div><% } %>
+
+  <label class="full">Ảnh chi tiết sản phẩm
+    <input type="file" name="detail_images" accept="image/*" multiple>
+    <small>Chọn tối đa 8 ảnh/lần. Các ảnh này sẽ hiện trong trang chi tiết khi bấm vào sản phẩm.</small>
+  </label>
+
+  <% if(gallery?.length){ %>
+    <div class="full">
+      <strong>Ảnh chi tiết hiện có</strong>
+      <div class="gallery-edit">
+        <% gallery.forEach(img => { %>
+          <div class="gallery-edit-item">
+            <img src="<%= img.url %>" alt="Ảnh chi tiết">
+            <button class="btn danger small" type="submit" formaction="/products/<%= product.id %>/gallery/<%= img.id %>/delete" formmethod="post" onclick="return confirm('Xóa ảnh này?')">Xóa ảnh</button>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
+  <label class="full">Ghi chú<textarea name="note" rows="4"><%= product?.note || '' %></textarea></label>
+  <div class="full form-actions"><a href="/products" class="btn">Quay lại</a><button class="btn primary"><%= product ? 'Lưu thay đổi' : 'Thêm sản phẩm' %></button></div>
+</form>
+</div>
+
+<% if(product){ %>
+<div class="panel form-panel" id="warehouse-priority" style="margin-top:18px">
+  <div class="panel-head" style="align-items:flex-start;gap:16px;flex-wrap:wrap">
+    <div>
+      <h2 style="margin-bottom:6px">🏬 Địa chỉ lấy hàng / Kho ưu tiên của riêng mẫu này</h2>
+      <p class="muted" style="margin:0">Mỗi <b>phân loại</b> của cùng một mẫu có thể lấy ở kho khác nhau. Ví dụ <b>Best</b> dùng Kho A → B, còn <b>Siêu Cấp</b> dùng Kho C → D. Có thể gán tiếp theo từng size.</p>
+    </div>
+    <a class="btn" href="/warehouses">🔄 Danh sách cửa hàng GHSV</a>
+  </div>
+
+  <% const whList = Array.isArray(warehouses) ? warehouses : []; const ruleList = Array.isArray(warehouseRules) ? warehouseRules : []; const warehouseVariants = Object.entries(product?.variant_prices||{}).filter(([,v])=>Number(v||0)>0).map(([k])=>k); %>
+  <% if(!whList.filter(w=>w.is_active).length){ %>
+    <div class="alert error" style="margin-top:14px">Chưa có cửa hàng GHSV. Vào <b>Danh sách cửa hàng GHSV</b> và bấm “Đồng bộ cửa hàng GHSV” trước.</div>
+  <% } else { %>
+  <form action="/products/<%= product.id %>/warehouses" method="post" id="warehouseRulesForm" style="margin-top:14px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div id="ruleRows">
+      <% const list = ruleList.length ? ruleList : [{warehouse_id:'',variant:'*',size:'*',priority:1}]; list.forEach((r,i)=>{ %>
+      <div class="warehouse-rule-card">
+        <div class="warehouse-priority-badge">Kho <%= i+1 %></div>
+        <label>Cửa hàng / địa chỉ lấy hàng
+          <select name="warehouse_id" required>
+            <option value="">-- Chọn cửa hàng GHSV --</option>
+            <% whList.filter(w=>w.is_active).forEach(w=>{ const addr=[w.ghsv_address,w.ghsv_ward,w.ghsv_district,w.ghsv_province].filter(Boolean).join(', '); %>
+              <option value="<%= w.id %>" <%= Number(r.warehouse_id)===Number(w.id)?'selected':'' %>><%= w.name %> · Shop ID <%= w.ghsv_warehouse_id||'-' %><%= addr?(' · '+addr):'' %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label>Phân loại
+          <select name="rule_variant" required>
+            <option value="*" <%= (r.variant||'*')==='*'?'selected':'' %>>* · Tất cả phân loại</option>
+            <% warehouseVariants.forEach(v=>{ %><option value="<%= v %>" <%= String(r.variant||'')===String(v)?'selected':'' %>><%= variantLabel(v) %></option><% }) %>
+          </select>
+          <small>Best và Siêu Cấp có thể dùng chuỗi kho khác nhau.</small>
+        </label>
+        <label>Áp dụng size
+          <input name="rule_size" value="<%= r.size||'*' %>" placeholder="* hoặc 38, 42...">
+          <small>* = tất cả size</small>
+        </label>
+        <label>Thứ tự ưu tiên
+          <input name="priority" type="number" min="1" max="999" value="<%= r.priority||i+1 %>">
+        </label>
+        <button class="btn danger small" type="button" onclick="this.closest('.warehouse-rule-card').remove();renumberWarehouseCards()">Xóa</button>
+      </div>
+      <% }) %>
+    </div>
+    <div class="form-actions" style="margin-top:14px;justify-content:flex-start">
+      <button class="btn" type="button" id="addRuleBtn">+ Thêm kho dự phòng</button>
+      <button class="btn primary" type="submit">💾 Lưu kho của mẫu này</button>
+    </div>
+  </form>
+  <% } %>
+
+  <% if(ruleList.length){ %>
+  <div class="warehouse-summary" style="margin-top:16px">
+    <b>Thứ tự hiện tại:</b>
+    <% const byId = Object.fromEntries(whList.map(w=>[String(w.id),w])); ruleList.slice().sort((a,b)=>Number(a.priority)-Number(b.priority)).forEach((r,idx)=>{ const w=byId[String(r.warehouse_id)]; if(w){ %>
+      <span><b><%= r.variant==='*'?'Tất cả phân loại':variantLabel(r.variant) %></b> · ưu tiên <%= r.priority %>: <%= w.name %> <small>(size <%= r.size||'*' %>, Shop ID <%= w.ghsv_warehouse_id||'-' %>)</small></span>
+    <% } }); %>
+  </div>
+  <% } %>
+</div>
+
+<template id="ruleTpl"><div class="warehouse-rule-card"><div class="warehouse-priority-badge">Kho</div><label>Cửa hàng / địa chỉ lấy hàng<select name="warehouse_id" required><option value="">-- Chọn cửa hàng GHSV --</option><% (warehouses||[]).filter(w=>w.is_active).forEach(w=>{ const addr=[w.ghsv_address,w.ghsv_ward,w.ghsv_district,w.ghsv_province].filter(Boolean).join(', '); %><option value="<%= w.id %>"><%= w.name %> · Shop ID <%= w.ghsv_warehouse_id||'-' %><%= addr?(' · '+addr):'' %></option><% }) %></select></label><label>Phân loại<select name="rule_variant" required><option value="*">* · Tất cả phân loại</option><% warehouseVariants.forEach(v=>{ %><option value="<%= v %>"><%= variantLabel(v) %></option><% }) %></select><small>Mỗi phân loại có chuỗi kho riêng.</small></label><label>Áp dụng size<input name="rule_size" value="*" placeholder="* hoặc 38, 42..."><small>* = tất cả size</small></label><label>Thứ tự ưu tiên<input name="priority" type="number" min="1" max="999" value="1"></label><button class="btn danger small" type="button" onclick="this.closest('.warehouse-rule-card').remove();renumberWarehouseCards()">Xóa</button></div></template>
+<% } else { %>
+<div class="panel form-panel" style="margin-top:18px">
+  <h2>🏬 Địa chỉ lấy hàng / Kho ưu tiên</h2>
+  <p class="muted">Lưu sản phẩm trước. Sau đó Bee sẽ cho gán Kho 1 → Kho 2 → Kho 3 riêng cho mẫu này.</p>
+</div>
+<% } %>
+<script>
+(() => {
+  const sizeInput = document.getElementById('sizeInput');
+  const grid = document.getElementById('sizeStockGrid');
+  if (!sizeInput || !grid) return;
+  let initial = {};
+  try { initial = JSON.parse(grid.dataset.stock || '{}'); } catch(e) {}
+  const values = {...initial};
+  function sizes(){ return [...new Set(sizeInput.value.split(/[,;\n\/\s]+/).map(x=>x.trim()).filter(Boolean))]; }
+  function render(){
+    grid.querySelectorAll('input[data-size]').forEach(i => values[i.dataset.size] = i.value);
+    grid.innerHTML = sizes().map(size => `<label><span>Size ${size}</span><input data-size="${size.replace(/"/g,'&quot;')}" type="number" min="0" max="100000" name="size_stock[${size.replace(/"/g,'&quot;')}]" value="${Number(values[size] ?? 0)}"><small>${Number(values[size] ?? 0)<=0?'Hết size':'đôi'}</small></label>`).join('') || '<div class="muted">Nhập danh sách size ở ô phía trên để tạo tồn kho từng size.</div>';
+  }
+  sizeInput.addEventListener('input', render); render();
+})();
+function renumberWarehouseCards(){
+  document.querySelectorAll('.warehouse-rule-card').forEach((card,i)=>{
+    const badge=card.querySelector('.warehouse-priority-badge'); if(badge) badge.textContent='Kho '+(i+1);
+    const pri=card.querySelector('input[name="priority"]'); if(pri && (!pri.value || Number(pri.value)<=0)) pri.value=i+1;
+  });
+}
+const addRuleBtn=document.getElementById('addRuleBtn');
+if(addRuleBtn){ addRuleBtn.addEventListener('click',()=>{
+  const t=document.getElementById('ruleTpl'); const row=t.content.cloneNode(true);
+  document.getElementById('ruleRows').appendChild(row);
+  const cards=document.querySelectorAll('.warehouse-rule-card'); const last=cards[cards.length-1];
+  const pri=last?.querySelector('input[name="priority"]'); if(pri) pri.value=cards.length;
+  renumberWarehouseCards();
+}); renumberWarehouseCards(); }
+</script>
+<%- include('partials/footer') %>

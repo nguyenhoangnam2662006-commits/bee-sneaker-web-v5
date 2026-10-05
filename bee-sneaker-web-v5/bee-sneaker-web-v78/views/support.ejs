@@ -1,0 +1,9 @@
+<%- include('partials/header') %>
+<div class="panel"><div class="panel-head"><div><h2>Chăm sóc khách hàng</h2><p>CTV chỉ thấy yêu cầu của mình. Chủ shop thấy toàn bộ yêu cầu.</p></div></div>
+<div class="table-wrap"><table><thead><tr><th>Mã yêu cầu</th><th>Đơn</th><% if(user.role==='admin'){ %><th>CTV</th><% } %><th>Loại xử lý</th><th>Ghi chú CTV</th><th>Trạng thái</th><th>Phản hồi chủ shop</th><th>Thời gian</th></tr></thead><tbody>
+<% if(!tickets.length){ %><tr><td colspan="8" class="empty">Chưa có yêu cầu CSKH.</td></tr><% } %>
+<% tickets.forEach(t=>{ %><tr><td>#<%= t.id %></td><td><a class="order-link" href="<%= user.role==='admin'?'/orders#order-':'/my-orders#order-' %><%= t.order_id %>">Đơn #<%= t.order_id %></a><small><%= t.tracking_code||'Chưa có mã vận đơn' %></small></td><% if(user.role==='admin'){ %><td><%= t.ctv_name||'-' %></td><% } %><td><b><%= t.request_type %></b></td><td><%= t.note||'-' %></td><td><span class="badge"><%= t.status %></span></td><td>
+<% if(user.role==='admin'){ %><form method="post" action="/support/<%= t.id %>/update"><select name="status"><% ['Mới','Đang xử lý','Đã xử lý'].forEach(s=>{ %><option <%= t.status===s?'selected':'' %>><%= s %></option><% }) %></select><input name="admin_note" value="<%= t.admin_note||'' %>" placeholder="Phản hồi/ghi chú"><button class="btn small">Lưu</button></form><% } else { %><%= t.admin_note||'Chưa có phản hồi' %><% } %>
+</td><td><%= new Date(t.created_at).toLocaleString('vi-VN') %></td></tr><% }) %>
+</tbody></table></div></div>
+<%- include('partials/footer') %>
