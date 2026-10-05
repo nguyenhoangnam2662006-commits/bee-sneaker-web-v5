@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title><%= title %></title><link rel="manifest" href="/kho/<%= warehouse.access_token %>/manifest.webmanifest"><meta name="theme-color" content="#111827">
+<link rel="stylesheet" href="/style.css"><style>
+body{margin:0;background:#f4f6fa;color:#111827;font-family:system-ui,-apple-system,Segoe UI,sans-serif}.kho-wrap{max-width:720px;margin:auto;padding:18px}.kho-head{background:#111827;color:white;padding:18px;border-radius:18px;margin-bottom:14px}.kho-head h1{margin:0 0 5px}.push-box,.order-card{background:white;border:1px solid #e5e7eb;border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 2px 10px rgba(0,0,0,.04)}.push-ok{color:#067647;font-weight:700}.result-banner{padding:13px 14px;border-radius:14px;margin:12px 0;font-weight:700}.result-banner.success{background:#d1fadf;color:#05603a;border:1px solid #a6f4c5}.result-banner.error{background:#fee4e2;color:#b42318;border:1px solid #fecdca}.order-card h3{margin:0 0 8px}.meta{color:#667085;font-size:14px}.answer-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.big-btn{border:0;border-radius:14px;padding:18px 12px;font-size:18px;font-weight:800;cursor:pointer}.yes{background:#d1fadf;color:#05603a}.no{background:#fee4e2;color:#b42318}.empty-kho{text-align:center;padding:40px 10px;color:#667085}.status-line{margin-top:10px;font-size:14px}.install-note{font-size:13px;color:#667085;line-height:1.5}.refresh{float:right;background:#fff;color:#111827;border:0;border-radius:10px;padding:8px 12px;font-weight:700}.creating{opacity:.6;pointer-events:none}@media(max-width:480px){.kho-wrap{padding:10px}.answer-grid{grid-template-columns:1fr 1fr}.big-btn{font-size:17px;padding:17px 8px}}
+</style></head><body>
+<div class="kho-wrap">
+  <div class="kho-head"><button class="refresh" onclick="location.reload()">↻ Tải lại</button><div>🐝 Bee Kho</div><h1><%= warehouse.name %></h1><div style="opacity:.8"><%= warehouse.ghsv_address||'' %></div></div>
+  <% if(khoMessage){ %><div class="result-banner <%= khoMessageType==='error'?'error':'success' %>"><%= khoMessage %></div><% } %>
+  <div class="push-box">
+    <b>🔔 Thông báo đơn mới</b>
+    <p id="pushState" class="install-note">Bấm nút dưới đây trên điện thoại kho để nhận thông báo kể cả khi không mở trang.</p>
+    <button id="enablePush" class="btn primary" type="button">Bật thông báo trên máy này</button>
+    <div class="install-note" style="margin-top:10px">Android: cho phép thông báo khi trình duyệt hỏi. iPhone/iPad: thêm Bee Kho ra Màn hình chính rồi mở từ icon và bật thông báo.</div>
+  </div>
+  <div id="orders">
+  <% if(!pending.length && requestedOrderId){ %><div class="result-banner error">⚠️ Điện thoại vừa nhận push cho đơn #<%= requestedOrderId %> nhưng máy chủ chưa thấy đơn này trong hàng chờ của kho. Hãy bấm Tải lại; nếu vẫn còn, báo Admin kiểm tra gán kho của sản phẩm.</div><% } %>
+  <% if(!pending.length){ %><div class="order-card empty-kho">✅ Hiện không có đơn nào chờ kho check.</div><% } %>
+  <% pending.forEach(o=>{ %><div class="order-card" id="order-<%= o.id %>" data-order-id="<%= o.id %>">
+    <h3>Đơn <%= o.tracking_code||('BEE'+String(o.id).padStart(6,'0')) %></h3>
+    <div style="display:flex;gap:12px;align-items:center">
+      <% if(o.check_product_id){ %><img src="/products/<%= o.check_product_id %>/image" alt="Ảnh sản phẩm" style="width:82px;height:82px;object-fit:cover;border-radius:12px;border:1px solid #e5e7eb" onerror="this.style.display='none'"><% } %>
+      <div><div><b><%= o.check_product_name||o.product_name %></b></div>
+      <div><%= o.check_product_variant||'' %> <%= o.check_size?('• Size '+o.check_size):'' %> • SL <b><%= o.check_quantity||o.quantity %></b></div></div>
+    </div>
+    <div class="meta">Tạo lúc <%= new Date(o.created_at).toLocaleString('vi-VN') %></div>
+    <div class="answer-grid">
+      <form method="post" action="/kho/<%= warehouse.access_token %>/orders/<%= o.id %>/reply" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Đang xử lý...';"><input type="hidden" name="answer" value="có"><button type="submit" class="big-btn yes" style="width:100%">✅ CÒN</button></form>
+      <form method="post" action="/kho/<%= warehouse.access_token %>/orders/<%= o.id %>/reply" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Đang xử lý...';"><input type="hidden" name="answer" value="hết"><button type="submit" class="big-btn no" style="width:100%">❌ HẾT</button></form>
+    </div>
+  </div><% }) %>
+  </div>
+</div>
+<script>
+const TOKEN=<%- JSON.stringify(warehouse.access_token) %>, CSRF=<%- JSON.stringify(csrfToken) %>, VAPID=<%- JSON.stringify(vapidPublicKey) %>;
+function b64ToUint8(v){const p='='.repeat((4-v.length%4)%4),b=(v+p).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(b),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a}
+async function enablePush(){
+  const st=document.getElementById('pushState'),btn=document.getElementById('enablePush');
+  btn.disabled=true; btn.textContent='Đang bật...';
+  try{
+    if(!('serviceWorker' in navigator)) throw new Error('Trình duyệt này không có Service Worker. Trên iPhone hãy mở Bee Kho từ icon ngoài Màn hình chính.');
+    if(!('Notification' in window)) throw new Error('Thiết bị này chưa hỗ trợ quyền thông báo web. Hãy cập nhật iOS và mở Bee Kho từ icon ngoài Màn hình chính.');
+    if(!VAPID) throw new Error('Bee chưa có khóa Web Push. Báo Admin kiểm tra cấu hình WEB_PUSH.');
+
+    // V73: đăng ký Service Worker trước rồi kiểm tra reg.pushManager.
+    // Một số iPhone/PWA không expose window.PushManager dù registration.pushManager vẫn dùng được.
+    const reg=await navigator.serviceWorker.register('/sw.js');
+    const ready=await navigator.serviceWorker.ready;
+    const swReg=ready||reg;
+    if(!swReg.pushManager) throw new Error('Máy này chưa hỗ trợ Web Push. iPhone cần iOS 16.4+ và phải mở Bee Kho từ icon ngoài Màn hình chính.');
+
+    let perm=Notification.permission;
+    if(perm!=='granted') perm=await Notification.requestPermission();
+    if(perm!=='granted') throw new Error(perm==='denied'?'Quyền thông báo đang bị Chặn. Vào Cài đặt iPhone > Thông báo > Bee Kho để bật lại.':'Bạn chưa cho phép thông báo.');
+
+    let sub=await swReg.pushManager.getSubscription();
+    if(!sub) sub=await swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToUint8(VAPID)});
+    const r=await fetch(`/kho/${TOKEN}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json','x-csrf-token':CSRF},body:JSON.stringify({subscription:sub.toJSON()})});
+    let detail=''; try{detail=(await r.json()).message||''}catch{}
+    if(!r.ok) throw new Error(detail||'Không lưu được thiết bị lên Bee.');
+    st.textContent='✅ Máy này đã nhận thông báo Bee Kho.'; st.className='push-ok';
+    btn.textContent='✅ Đã bật thông báo'; btn.disabled=true;
+  }catch(e){
+    st.textContent='⚠️ '+(e&&e.message?e.message:String(e));
+    st.className='install-note';
+    btn.disabled=false; btn.textContent='Thử bật thông báo lại';
+  }
+}
+document.getElementById('enablePush').addEventListener('click',enablePush);
+
+// V68: Bee Kho tự làm mới danh sách khi có push hoặc khi đơn mới xuất hiện.
+// Nhờ vậy kho không cần bấm Tải lại / chạm notification mới thấy sản phẩm CÒN-HẾT.
+const initialOrderIds = () => Array.from(document.querySelectorAll('[data-order-id]')).map(x=>String(x.dataset.orderId)).sort().join(',');
+let lastOrderIds = initialOrderIds();
+let checkingPending = false;
+async function refreshPendingIfChanged(){
+  if(checkingPending || document.hidden) return;
+  checkingPending=true;
+  try{
+    const r=await fetch(`/kho/${TOKEN}/pending`,{headers:{'Accept':'application/json'},cache:'no-store'});
+    if(!r.ok) return;
+    const j=await r.json();
+    const ids=(j.pending||[]).map(o=>String(o.id)).sort().join(',');
+    if(ids!==lastOrderIds){ location.reload(); return; }
+  }catch(e){} finally{ checkingPending=false; }
+}
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message',ev=>{
+    if(ev.data && ev.data.type==='BEE_KHO_NEW_ORDER') location.reload();
+  });
+}
+window.addEventListener('focus',refreshPendingIfChanged);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshPendingIfChanged(); });
+setInterval(refreshPendingIfChanged,5000);
+
+</script></body></html>
