@@ -1,0 +1,61 @@
+<%- include('partials/header') %>
+<% if(user.role==='ctv'){ %><div style="margin-bottom:16px"><a class="btn primary" href="/cart/add?product_id=<%= product.id %>">🛒 Thêm vào giỏ</a></div><% } %>
+<% const vp = product.variant_prices || {}; const allImages = []; if(product.image) allImages.push({url: product.image, downloadUrl: `/products/${product.id}/image/download`, primary:true}); gallery.forEach(g=>allImages.push({url:g.url, downloadUrl: `/products/images/${g.id}/download`, primary:false})); %>
+<div class="toolbar">
+  <a href="/products" class="btn">← Danh sách sản phẩm</a>
+  <% if(user.role==='admin'){ %><a href="/products/<%= product.id %>/edit" class="btn primary">Sửa sản phẩm + Kho lấy hàng</a><% } %>
+</div>
+<div class="product-detail-grid">
+  <div class="panel product-gallery-panel">
+    <% if(allImages.length){ %>
+      <div class="product-main-image"><img id="mainProductImage" src="<%= allImages[0].url %>" alt="<%= product.name %>"></div>
+      <div class="product-image-actions">
+        <a id="downloadProductImage" class="btn primary" href="<%= allImages[0].downloadUrl %>" download>⬇ Lưu ảnh</a>
+        <span>CTV có thể chọn từng ảnh rồi bấm “Lưu ảnh”.</span>
+      </div>
+      <div class="product-thumbnails">
+        <% allImages.forEach((img,idx)=>{ %>
+          <button type="button" class="product-thumb <%= idx===0?'active':'' %>" data-src="<%= img.url %>" data-download="<%= img.downloadUrl %>"><img src="<%= img.url %>" alt="Ảnh <%= idx+1 %>"></button>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="product-no-image">👟<span>Chưa có ảnh sản phẩm</span></div>
+    <% } %>
+  </div>
+
+  <div class="panel product-info-panel">
+    <h2><%= product.name %></h2>
+    <div class="product-meta"><span>Mã sản phẩm</span><strong><%= product.sku || '-' %></strong></div>
+    <div class="product-meta"><span>Size</span><strong><%= product.size || '-' %></strong></div>
+    <div class="product-meta"><span>Tồn kho</span><strong><%= product.quantity %> đôi</strong></div>
+
+    <h3>Phân loại & giá gốc</h3>
+    <div class="variant-cards">
+      <% let any=false; ['Like Auth','Siêu Cấp','Best'].forEach(v=>{ if(Number(vp[v]||0)>0){ any=true; %>
+        <div class="variant-card"><span><%= variantLabel(v) %></span><strong><%= Number(vp[v]).toLocaleString('vi-VN') %>đ</strong></div>
+      <% } }); if(!any){ %><div class="empty">Chưa có giá phân loại.</div><% } %>
+    </div>
+
+    <% if(user.role==='admin'){ const byId=Object.fromEntries((warehouses||[]).map(w=>[String(w.id),w])); %>
+      <h3>Kho lấy hàng ưu tiên</h3>
+      <% if((warehouseRules||[]).length){ %><div class="warehouse-summary">
+        <% (warehouseRules||[]).slice().sort((a,b)=>Number(a.priority)-Number(b.priority)).forEach((r,idx)=>{ const w=byId[String(r.warehouse_id)]; if(w){ %><span><b><%= r.variant==='*'?'Tất cả phân loại':variantLabel(r.variant) %></b> · ưu tiên <%= r.priority %>: <b><%= w.name %></b> · size <%= r.size||'*' %> · Shop ID <%= w.ghsv_warehouse_id||'-' %></span><% } }); %>
+      </div><% } else { %><div class="empty" style="padding:14px">Mẫu này chưa gán kho lấy hàng.</div><% } %>
+    <% } %>
+
+    <% if(product.note){ %><h3>Ghi chú</h3><div class="product-note"><%= product.note %></div><% } %>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.product-thumb').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const main = document.getElementById('mainProductImage');
+      if(main) main.src = btn.dataset.src;
+      const download = document.getElementById('downloadProductImage');
+      if(download) download.href = btn.dataset.download;
+      document.querySelectorAll('.product-thumb').forEach(x=>x.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+</script>
+<%- include('partials/footer') %>
