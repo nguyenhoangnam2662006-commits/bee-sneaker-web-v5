@@ -58,3 +58,6 @@
 
 /* V80: tách chuỗi kho ưu tiên theo từng phân loại */
 .warehouse-variant-groups{display:grid;gap:16px}.warehouse-variant-group{border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fff}.warehouse-variant-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}.warehouse-variant-head h3{margin:0 0 4px;font-size:18px}.warehouse-variant-head small{color:#6b7280}.warehouse-variant-group .warehouse-rule-card{grid-template-columns:auto minmax(280px,2.4fr) minmax(110px,.65fr) minmax(160px,.9fr) auto}.warehouse-variant-group .warehouse-rule-card select{display:block;width:100%;margin-top:6px;padding:10px 11px;border:1px solid #d8dde7;border-radius:9px;background:#fff;font:inherit}@media(max-width:900px){.warehouse-variant-group .warehouse-rule-card{grid-template-columns:1fr 1fr}}@media(max-width:600px){.warehouse-variant-group .warehouse-rule-card{grid-template-columns:1fr}}
+
+/* V90: giá ship của CTV chỉ hiển thị, không phải trường nhập liệu */
+.locked-value{margin-top:7px;padding:11px 12px;border:1px solid #dbe2ea;border-radius:10px;background:#f8fafc;font-weight:800;color:#0f172a;min-height:20px}

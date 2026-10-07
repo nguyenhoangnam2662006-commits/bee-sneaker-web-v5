@@ -13,7 +13,7 @@
 <label>Size<input name="size" placeholder="Ví dụ: 40" required></label>
 <label>Số lượng<input name="quantity" id="quantity" type="number" min="1" value="1" required></label>
 <label>Tiền thu hộ tiền hàng<input name="base_cod" id="baseCod" type="number" min="0" placeholder="Ví dụ: 550000" required></label>
-<label>Phí ship tự động<input name="shipping_fee" id="shippingFee" type="number" min="0" value="35000" readonly></label>
+<label>Phí ship hệ thống<div class="locked-value" id="shippingFee">35.000đ</div><small class="muted">CTV không thể sửa phí ship. Bee tự tính và không nhận giá ship từ trình duyệt.</small></label>
 <label class="full">Cách tính ship
 <select name="shipping_type" id="shippingType" required>
 <option value="freeship">Freeship cho khách (không cộng ship vào COD)</option>
@@ -74,7 +74,7 @@
     const q=Math.max(1,Number(qty.value)||1);
     const baseCod=Math.max(0,Number(base.value)||0);
     const shipping=35000+Math.max(0,q-1)*10000;
-    ship.value=shipping;
+    ship.textContent=fmt(shipping);
     const cod=baseCod+(type.value==='customer_pay'?shipping:0);
     const cost=unit*q;
     const tax=Math.round(cod*0.015);

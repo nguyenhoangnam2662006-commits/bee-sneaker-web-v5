@@ -8,7 +8,7 @@
 <label>Phường/Xã GHSV<select id="ghsvWardCode" name="ghsv_ward_code" required disabled><option value="">-- Chọn Phường/Xã --</option></select><input type="hidden" name="ghsv_to_ward" id="ghsvWardName"></label>
 <div class="muted">3 ô này dùng đúng CSDL GHSV để sau khi kho xác nhận, Bee có thể tự tạo vận đơn mà không nhập lại địa chỉ.</div>
 <label>Tiền thu hộ tiền hàng<input name="base_cod" id="baseCod" type="number" min="0" value="<%= totals.totalMoney %>" required></label>
-<label>Phí ship tự động<input id="shippingFee" value="<%= shippingFee %>" readonly></label>
+<label>Phí ship hệ thống<div class="locked-value" id="shippingFee"><%= Number(shippingFee).toLocaleString('vi-VN') %>đ</div><small class="muted">CTV không thể sửa phí ship. Bee tự áp dụng theo bảng phí hiện tại và giữ nguyên luồng GHSV.</small></label>
 <label class="full">Cách tính ship<select name="shipping_type" id="shippingType"><option value="freeship">Freeship cho khách</option><option value="customer_pay">Khách trả ship (cộng ship vào COD)</option></select></label>
 <div class="full panel" style="padding:16px"><strong>Tạm tính đơn</strong><div style="display:grid;gap:6px;margin-top:8px"><div>Tổng số lượng: <b><%= totals.totalQuantity %> đôi</b></div><div>Tổng tiền gốc: <b><%= Number(totals.totalMoney).toLocaleString('vi-VN') %>đ</b></div><div>COD cuối: <b id="previewCod"></b></div><div>Thuế 1,5%: <b id="previewTax"></b></div><div>Lãi trước ship: <b id="previewProfitBeforeShip"></b></div><div>Phí ship CTV chịu: <b id="previewShipCost"></b></div><div>Lãi CTV cuối: <b id="previewProfit"></b></div></div></div>
 <label class="full">Ghi chú<textarea name="note" rows="3"></textarea></label>

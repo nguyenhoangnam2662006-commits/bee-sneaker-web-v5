@@ -1946,6 +1946,7 @@ app.post('/checkout', login, ctvOnly, orderIpLimiter, orderUserLimiter, writeLim
   for(const item of chosen){ const p=await db.findProductById(item.product_id); if(!p) continue; const unit=money((p.variant_prices||{})[item.product_variant]); const q=Math.max(1,Math.min(100,Number(item.quantity)||1)); const available=availableForSize(p,item.size); if(unit<=0||available<q) continue; fresh.push({product_id:p.id,product_name:p.name,product_variant:item.product_variant,variant_unit_price:unit,size:item.size,quantity:q,line_total:unit*q}); }
   if(!fresh.length){ req.session.message={type:'error',text:'Giỏ hàng không còn sản phẩm hợp lệ.'}; req.session.cart=[]; return res.redirect('/cart'); }
   const totalQuantity=fresh.reduce((n,x)=>n+x.quantity,0), productCost=fresh.reduce((n,x)=>n+x.line_total,0);
+  // V90: CTV không được truyền/sửa shipping_fee. Backend luôn tự tính phí ship theo bảng phí Bee/GHSV hiện tại.
   const baseCod=money(req.body.base_cod), shippingType=req.body.shipping_type==='customer_pay'?'customer_pay':'freeship', shippingFee=shippingFeeForQuantity(totalQuantity);
   const cod=baseCod+(shippingType==='customer_pay'?shippingFee:0), taxAmount=Math.round(cod*0.015), ctvProfit=cod-productCost-taxAmount-(shippingType==='freeship'?shippingFee:0);
   try {
@@ -2003,6 +2004,7 @@ app.post('/orders', login, ctvOnly, orderIpLimiter, orderUserLimiter, writeLimit
   const quantity = Math.max(1, positiveInt(req.body.quantity, 1, 100));
   const baseCod = money(req.body.base_cod);
   const shippingType = req.body.shipping_type === 'customer_pay' ? 'customer_pay' : 'freeship';
+  // V90: không tin shipping_fee từ form; phí ship luôn do backend tự tính.
   const shippingFee = shippingFeeForQuantity(quantity);
   const cod = baseCod + (shippingType === 'customer_pay' ? shippingFee : 0);
   const productCost = unitPrice * quantity;
