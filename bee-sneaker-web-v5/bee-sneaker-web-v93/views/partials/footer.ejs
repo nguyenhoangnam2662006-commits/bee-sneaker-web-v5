@@ -1,0 +1,66 @@
+<% if (user) { %></div></main></div><% } %>
+<% if (user && user.role === 'admin') { %>
+<style>
+#bee-order-toast{position:fixed;right:20px;top:20px;z-index:9999;max-width:350px;background:#fff;color:#172033;border:2px solid #efb531;border-radius:12px;box-shadow:0 10px 36px #0003;padding:14px 16px;display:none}
+#bee-order-toast a{display:inline-block;margin-top:8px;font-weight:700;color:#8d6000}
+#bee-order-toast button{float:right;border:0;background:transparent;font-size:19px;cursor:pointer;color:inherit}
+</style>
+<div id="bee-order-toast" role="status" aria-live="polite"><button type="button" aria-label="Đóng thông báo" id="bee-order-toast-close">×</button><strong>🔔 Có đơn hàng mới!</strong><div id="bee-order-toast-text"></div><a href="/orders">Xem đơn hàng →</a></div>
+<script>
+(function(){
+  const nav = document.getElementById('bee-orders-nav');
+  const toast = document.getElementById('bee-order-toast');
+  const close = document.getElementById('bee-order-toast-close');
+  if(!nav || !toast) return;
+  close.addEventListener('click', () => { toast.style.display='none'; });
+  let lastCount = <%- JSON.stringify(Number(adminBadges && adminBadges.newOrders || 0)) %>;
+  let polling = false;
+  function updateBadge(count){
+    let badge=nav.querySelector('.nav-badge');
+    if(count>0){
+      if(!badge){ badge=document.createElement('span'); badge.className='nav-badge'; nav.appendChild(badge); }
+      badge.textContent=count>99?'99+':String(count);
+    } else if(badge) badge.remove();
+  }
+  async function poll(){
+    if(polling) return;
+    polling=true;
+    try{
+      const response=await fetch('/api/admin/order-alerts',{credentials:'same-origin',cache:'no-store'});
+      if(!response.ok) return;
+      const data=await response.json();
+      const count=Number(data.newOrders)||0;
+      updateBadge(count);
+      if(count>lastCount){
+        const added=count-lastCount;
+        document.getElementById('bee-order-toast-text').textContent=added+' đơn mới đang chờ xem.';
+        toast.style.display='block';
+      }
+      lastCount=count;
+    }catch(err){ /* Offline/network error: retry next interval */ }
+    finally{polling=false;}
+  }
+  setInterval(poll, 8000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) poll(); });
+})();
+</script>
+<% } %>
+<% if(user){ %><script>
+(function(){
+ const app=document.getElementById('bee-app'),toggle=document.getElementById('bee-menu-toggle');
+ const close=()=>{app.classList.remove('nav-open');toggle&&toggle.setAttribute('aria-expanded','false');};
+ toggle&&toggle.addEventListener('click',()=>{const opened=app.classList.toggle('nav-open');toggle.setAttribute('aria-expanded',String(opened));});
+ document.querySelectorAll('[data-close-nav]').forEach(el=>el.addEventListener('click',close));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+ const pathname=location.pathname;
+ let best=null;
+ document.querySelectorAll('[data-nav]').forEach(link=>{
+  const route=link.getAttribute('data-nav');
+  if(pathname===route || (route!=='/products' && route!=='/dashboard' && pathname.startsWith(route+'/'))){
+    if(!best||route.length>best.getAttribute('data-nav').length)best=link;
+  }
+ });
+ if(best){best.classList.add('active');best.setAttribute('aria-current','page');const more=best.closest('details');if(more)more.open=true;}
+})();
+</script><% } %>
+</body></html>
