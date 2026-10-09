@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827"><title><%= title %> | Bee Sneaker</title><link rel="stylesheet" href="/style.css"><% if(user&&user.role==='admin'){ %><link rel="manifest" href="/manifest.webmanifest"><% } %></head>
+<body><% if(user){ const pathNow=(typeof currentPath!=='undefined'&&currentPath)||''; %>
+<div class="layout bee-app" id="bee-app"><div class="sidebar-backdrop" data-close-nav></div>
+<aside class="sidebar" id="bee-sidebar" aria-label="Điều hướng chính">
+  <a href="/dashboard" class="brand"><span class="brand-mark">B</span><span class="brand-text">Bee Sneaker<small>SHOP MANAGEMENT</small></span></a>
+  <div class="who"><span class="avatar"><%= (user.full_name || 'B').trim().charAt(0).toUpperCase() %></span><span class="who-info"><strong><%= user.full_name %></strong><small><%= user.role==='admin'?'Quản trị viên':'Cộng tác viên' %></small></span></div>
+  <nav id="bee-nav" aria-label="Menu">
+    <div class="nav-section-label">TỔNG QUAN</div>
+    <a href="/dashboard" data-nav="/dashboard"><span class="nav-icon">▦</span><span><%= user.role==='admin'?'Bảng điều khiển':'Trang của tôi' %></span></a>
+    <a href="/products" data-nav="/products"><span class="nav-icon">◈</span><span>Sản phẩm</span></a>
+    <% if(user.role==='admin'){ %>
+      <div class="nav-section-label">VẬN HÀNH</div>
+      <a href="/orders" id="bee-orders-nav" data-nav="/orders"><span class="nav-icon">▣</span><span>Đơn hàng</span><% if(adminBadges&&adminBadges.newOrders>0){ %><span class="nav-badge"><%= adminBadges.newOrders>99?'99+':adminBadges.newOrders %></span><% } %></a>
+      <a href="/warehouses" data-nav="/warehouses"><span class="nav-icon">▤</span><span>Kho & ưu tiên</span></a>
+      <a href="/ghsv-lookup" data-nav="/ghsv-lookup"><span class="nav-icon">⌕</span><span>Tra GHSV</span></a>
+      <a href="/support" data-nav="/support"><span class="nav-icon">◉</span><span>Chăm sóc khách hàng</span><% if(adminBadges&&adminBadges.newSupport>0){ %><span class="nav-badge"><%= adminBadges.newSupport>99?'99+':adminBadges.newSupport %></span><% } %></a>
+      <div class="nav-section-label">QUẢN LÝ</div>
+      <a href="/ctv" data-nav="/ctv"><span class="nav-icon">♧</span><span>Cộng tác viên</span><% if(adminBadges&&adminBadges.pendingCtv>0){ %><span class="nav-badge"><%= adminBadges.pendingCtv>99?'99+':adminBadges.pendingCtv %></span><% } %></a>
+      <a href="/revenue" data-nav="/revenue"><span class="nav-icon">▥</span><span>Doanh thu</span></a>
+      <a href="/debt" data-nav="/debt"><span class="nav-icon">◫</span><span>Công nợ CTV Drop</span></a>
+      <details class="nav-more"><summary><span class="nav-icon">⋯</span><span>Quản lý khác</span><span class="nav-chevron">⌄</span></summary><div class="nav-more-links">
+      <a href="/users" data-nav="/users">Tài khoản<% if(adminBadges&&adminBadges.pendingCtv>0){ %><span class="nav-dot"></span><% } %></a>
+      <a href="/audit" data-nav="/audit">Nhật ký bảo mật</a>
+      <a href="/products/new" data-nav="/products/new">Thêm sản phẩm</a>
+      </div></details>
+    <% } else { %>
+      <div class="nav-section-label">ĐẶT HÀNG</div>
+      <a href="/orders/new" data-nav="/orders/new"><span class="nav-icon">＋</span><span>Tạo đơn hàng</span></a>
+      <a href="/cart" data-nav="/cart"><span class="nav-icon">▧</span><span>Giỏ hàng (<%= cartCount %>)</span></a>
+      <a href="/my-orders" data-nav="/my-orders"><span class="nav-icon">▣</span><span>Đơn của tôi</span><% if(ctvBadges&&ctvBadges.stockUpdates>0){ %><span class="nav-badge"><%= ctvBadges.stockUpdates>99?'99+':ctvBadges.stockUpdates %></span><% } %></a>
+      <a href="/ghsv-lookup" data-nav="/ghsv-lookup"><span class="nav-icon">⌕</span><span>Tra GHSV</span></a>
+      <a href="/support" data-nav="/support"><span class="nav-icon">◉</span><span>Hỗ trợ</span></a>
+    <% } %>
+  </nav>
+  <div class="sidebar-bottom"><a href="/change-password" class="settings-link" data-nav="/change-password"><span class="nav-icon">⚙</span> Đổi mật khẩu</a><form action="/logout" method="post"><button class="logout" type="submit">↪ Đăng xuất</button></form></div>
+</aside>
+<main class="main"><header class="topbar"><div class="topbar-left"><button id="bee-menu-toggle" class="menu-toggle" type="button" aria-label="Mở menu" aria-controls="bee-sidebar" aria-expanded="false">☰</button><div class="page-heading"><span class="page-eyebrow">BEE SNEAKER / QUẢN LÝ</span><h1><%= title %></h1></div></div><div class="top-actions"><% if(user.role==='admin'){ %><a href="/orders" class="top-icon-btn" aria-label="Xem thông báo đơn hàng" title="Đơn hàng mới">♧<% if(adminBadges&&adminBadges.newOrders>0){ %><span class="top-notification-dot"></span><% } %></a><button type="button" id="bee-enable-push" class="btn small" title="Bật thông báo từ Bee Sneaker">🔔 Bật thông báo</button><a href="/products/new" class="btn primary top-create-btn">+ Thêm sản phẩm</a><% } else { %><a href="/orders/new" class="btn primary top-create-btn">+ Tạo đơn</a><% } %></div></header>
+<div class="content"><% if(message){ %><div class="alert <%= message.type %>"><%= message.text %></div><% } %>
+<% } %>
