@@ -1,0 +1,73 @@
+<%- include('partials/header') %>
+<div class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>GHSV riêng của CTV: <%= ctv.full_name %></h2>
+      <p class="muted"><%= ctv.phone||ctv.username %> · CTV #<%= ctv.id %></p>
+    </div>
+    <a class="btn" href="/users">← Tài khoản</a>
+  </div>
+
+  <div class="alert <%= connected?'success':'' %>">
+    <% if(connected){ %>
+      ✅ Đã kết nối token GHSV riêng. Token chỉ được backend giải mã khi gọi API và <b>không hiển thị lại trên web</b>.
+    <% } else { %>
+      CTV này chưa có token GHSV riêng. Đơn của họ hiện vẫn dùng GHSV shop chính như các bản cũ.
+    <% } %>
+  </div>
+
+  <div class="grid-2" style="gap:18px">
+    <div class="card" style="padding:16px">
+      <h3 style="margin-top:0"><%= connected?'Đổi token':'Kết nối token' %></h3>
+      <form method="post" action="/users/<%= ctv.id %>/ghsv/token" class="form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label>Token API GHSV của CTV
+          <input type="password" name="ghsv_token" autocomplete="new-password" required placeholder="Dán token mới tại đây">
+        </label>
+        <p class="muted">Bee sẽ test token bằng API danh sách cửa hàng trước khi lưu. Không gửi token qua chat hoặc ghi vào GitHub.</p>
+        <button class="btn primary" type="submit">🔐 Test + lưu token</button>
+      </form>
+    </div>
+    <div class="card" style="padding:16px">
+      <h3 style="margin-top:0">Đồng bộ</h3>
+      <p class="muted">Lấy shop_id của đúng tài khoản GHSV này. Tên shop trùng Bee Kho sẽ được map tự động; các shop còn lại map bằng tay ở bảng dưới.</p>
+      <form method="post" action="/users/<%= ctv.id %>/ghsv/sync" style="display:inline-block">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn" type="submit" <%= connected?'':'disabled' %>>🔄 Đồng bộ cửa hàng</button>
+      </form>
+      <% if(connected){ %>
+      <form method="post" action="/users/<%= ctv.id %>/ghsv/disconnect" style="display:inline-block;margin-left:6px" onsubmit="return confirm('Ngắt token GHSV của CTV này? Đơn đã tạo bằng tài khoản CTV sẽ không tra được cho tới khi kết nối lại.');">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn danger" type="submit">Ngắt kết nối</button>
+      </form>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Map cửa hàng GHSV CTV → Bee Kho dùng chung</h2>
+  <p class="muted">Ví dụ CTV có shop_id riêng cho “Nam Sneaker”. Map shop đó vào Bee Kho “Nam Sneaker”. Người kho vẫn chỉ mở <b>1 link Bee Kho</b> cho mọi CTV.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Cửa hàng GHSV của CTV</th><th>Shop ID</th><th>Địa chỉ</th><th>Bee Kho dùng chung</th></tr></thead>
+    <tbody>
+    <% if(!shops.length){ %><tr><td colspan="4" class="empty">Chưa có cửa hàng. Hãy lưu token rồi bấm Đồng bộ cửa hàng.</td></tr><% } %>
+    <% shops.forEach(s=>{ %><tr>
+      <td><b><%= s.name||'-' %></b><div class="muted"><%= s.phone||'' %></div></td>
+      <td><code><%= s.ghsv_shop_id %></code></td>
+      <td><%= s.address||'' %><% const loc=[s.ward,s.district,s.province].filter(Boolean).join(', '); if(loc){ %><div class="muted"><%= loc %></div><% } %></td>
+      <td>
+        <form method="post" action="/users/<%= ctv.id %>/ghsv/shops/<%= s.id %>/map" style="display:flex;gap:8px;align-items:center;min-width:280px">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <select name="warehouse_id" style="min-width:200px">
+            <option value="">-- Chưa map --</option>
+            <% warehouses.forEach(w=>{ %><option value="<%= w.id %>" <%= Number(s.warehouse_id)===Number(w.id)?'selected':'' %>><%= w.name %> · <%= w.ghsv_address||w.ghsv_warehouse_id||'' %></option><% }) %>
+          </select>
+          <button class="btn small" type="submit">Lưu map</button>
+        </form>
+      </td>
+    </tr><% }) %>
+    </tbody>
+  </table></div>
+</div>
+<%- include('partials/footer') %>
