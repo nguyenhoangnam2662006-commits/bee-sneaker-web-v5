@@ -1,0 +1,49 @@
+<%- include('partials/header') %>
+<%
+  const inferGroup = (p) => {
+    const g = String(p.product_group || '').trim();
+    if (g) return g;
+    const n = String(p.name || '').toLowerCase();
+    if (n.includes('samba')) return 'Samba';
+    if (n.includes('onitsuka')) return 'Onitsuka Tiger';
+    if (n.includes('air force')) return 'Air Force 1';
+    if (n.includes('jordan')) return 'Jordan';
+    return 'Khác';
+  };
+  const groups = {};
+  products.forEach(p => { const g=inferGroup(p); (groups[g] ||= []).push(p); });
+  const groupNames = Object.keys(groups).sort((a,b)=>a.localeCompare(b,'vi'));
+%>
+<div class="toolbar"><form class="search"><input name="q" value="<%= q %>" placeholder="Tìm tên, mã, size, dòng sản phẩm..."><button class="btn">Tìm</button></form><% if(user.role==='admin'){ %><a href="/products/new" class="btn primary">+ Thêm sản phẩm</a><% if(cloudinaryInfo){ %><span class="btn small <%= cloudinaryInfo.configured ? '' : 'danger' %>" style="cursor:default"><%= cloudinaryInfo.configured ? '☁️ Cloudinary đã kết nối' : '⚠️ Chưa cấu hình Cloudinary' %></span><% if(cloudinaryInfo.configured && cloudinaryInfo.legacyCount>0){ %><form action="/admin/cloudinary/migrate" method="post" onsubmit="return confirm('Chuyển tối đa 5 ảnh cũ sang Cloudinary? Trong lúc chạy không đóng trang.')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn small" type="submit">☁️ Chuyển ảnh cũ (<%= cloudinaryInfo.legacyCount %>)</button></form><% } %><% } %><% } %></div>
+<% const stockStatus = (p, sz) => { const ss=p.size_stock||{}; const sizes=(p.size||'').split(/[,;\n\/\s]+/).map(x=>x.trim()).filter(Boolean); const keys=sizes.some(s=>Object.prototype.hasOwnProperty.call(ss,s)); const positive=sizes.some(s=>Number(ss[s]||0)>0); const usable=keys&&(positive||Number(p.quantity||0)<=0); return usable?Number(ss[sz]||0):Number(p.quantity||0); }; %>
+<% const soldOutItems=products.filter(p=>{const sizes=(p.size||'').split(/[,;\n\/\s]+/).map(s=>s.trim()).filter(Boolean);return sizes.length?sizes.every(sz=>stockStatus(p,sz)<=0):Number(p.quantity||0)<=0;}); %>
+<% if(soldOutItems.length){ %><div class="alert warning" role="status">🔔 <b>Thông báo hết hàng:</b> Có <%= soldOutItems.length %> mẫu đã hết hàng. <%= soldOutItems.slice(0,5).map(p=>p.name).join(', ') %><%= soldOutItems.length>5?'…':'' %>. Các mẫu này không thể thêm vào giỏ.</div><% } %>
+<% if(products.length===0){ %><div class="panel empty">Không có sản phẩm.</div><% } %>
+<div class="product-groups">
+<% groupNames.forEach((groupName, gi)=>{ const items=groups[groupName]; %>
+  <section class="product-group panel <%= gi===0?'open':'' %>" data-product-group>
+    <button class="product-group-head" type="button" data-group-toggle aria-expanded="<%= gi===0?'true':'false' %>">
+      <div><span class="product-group-icon">👟</span><strong><%= groupName %></strong><span class="product-group-count"><%= items.length %> mẫu</span></div>
+      <span class="product-group-arrow">⌄</span>
+    </button>
+    <div class="product-group-body">
+      <div class="table-wrap"><table><thead><tr><th>Ảnh</th><th>Tên mẫu</th><th>Mã</th><th>Phân loại & giá</th><th>Size</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+      <% items.forEach(p=>{ const vp=p.variant_prices||{}; const ss=p.size_stock||{}; const hasSS=Object.keys(ss).length>0; const sizeArr=(p.size||'').split(/[,;\n\/\s]+/).map(x=>x.trim()).filter(Boolean); const soldOut=sizeArr.length?sizeArr.every(sz=>stockStatus(p,sz)<=0):Number(p.quantity||0)<=0; %><tr class="<%= soldOut?'sold-out-row':'' %>">
+      <td><a href="/products/<%= p.id %>" class="thumb product-click"><% if(p.image){ %><img src="<%= p.image %>" alt="<%= p.name %>"><% } else { %>👟<% } %></a></td>
+      <td><a class="product-name-link" href="/products/<%= p.id %>"><b><%= p.name %></b></a><% if(p.note){ %><small><%= p.note %></small><% } %><small class="detail-hint">Bấm để xem ảnh & chi tiết</small></td>
+      <td><%= p.sku || '-' %></td>
+      <td><% ['Like Auth','Siêu Cấp','Best'].forEach(v=>{ if(Number(vp[v]||0)>0){ %><div><b><%= variantLabel(v) %>:</b> <%= Number(vp[v]).toLocaleString('vi-VN') %>đ</div><% } }) %></td>
+      <td><% if(sizeArr.length){ %><div class="size-chips"><% sizeArr.forEach(sz=>{ const st=stockStatus(p,sz); %><span class="size-chip <%= st<=0?'out':'' %>">Size <%= sz %></span><% }) %></div><% } else { %>-<% } %></td>
+      <td><% if(soldOut){ %><span class="sold-out-badge">Hết hàng</span><% } else { %><span class="badge">Chọn size</span><% } %></td>
+      <td class="actions"><a class="btn small" href="/products/<%= p.id %>">Chi tiết</a><% if(user.role==='ctv'){ %><% if(soldOut){ %><span class="btn small disabled-btn">Hết hàng</span><% } else { %><a class="btn primary small" href="/cart/add?product_id=<%= p.id %>">Chọn size</a><% } %><% } %><% if(user.role==='admin'){ %><a class="btn small" href="/products/<%= p.id %>/edit">Sửa + Kho</a><form action="/products/<%= p.id %>/delete" method="post" onsubmit="return confirm('Xóa sản phẩm này?')"><button class="btn danger small">Xóa</button></form><% } %></td>
+      </tr><% }) %></tbody></table></div>
+    </div>
+  </section>
+<% }) %>
+</div>
+<script>
+document.querySelectorAll('[data-group-toggle]').forEach(btn=>btn.addEventListener('click',()=>{
+  const section=btn.closest('[data-product-group]'); const open=section.classList.toggle('open'); btn.setAttribute('aria-expanded',open?'true':'false');
+}));
+</script>
+<%- include('partials/footer') %>

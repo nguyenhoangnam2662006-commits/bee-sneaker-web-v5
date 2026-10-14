@@ -1,0 +1,17 @@
+<%- include('partials/header') %>
+<div class="panel">
+<% if(!cart.length){ %><div class="empty" style="padding:36px">Giỏ hàng đang trống.<div style="margin-top:16px"><a class="btn primary" href="/products">Chọn sản phẩm</a></div></div><% } else { %>
+<div class="cart-note">☑ Tích những mẫu muốn đặt trong lần này. Mẫu không tích vẫn được giữ lại trong giỏ.</div>
+<div class="table-wrap"><table><thead><tr><th>Chọn</th><th>Ảnh</th><th>Sản phẩm</th><th>Phân loại</th><th>Size</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th><th></th></tr></thead><tbody>
+<% cart.forEach((x,i)=>{ %><tr class="<%= x.selected===false?'cart-unselected':'' %>">
+<td><form action="/cart/<%= i %>/select" method="post" class="select-form"><input type="hidden" name="selected" value="<%= x.selected===false?'1':'0' %>"><input class="cart-check" type="checkbox" <%= x.selected===false?'':'checked' %> onchange="this.form.submit()"></form></td>
+<td><div class="thumb"><% if(x.image){ %><img src="<%= x.image %>" alt=""><% } else { %>👟<% } %></div></td>
+<td><b><%= x.product_name %></b><small><%= x.sku||'' %></small></td><td><%= variantLabel(x.product_variant) %></td><td><%= x.size %></td><td><%= Number(x.unit_price).toLocaleString('vi-VN') %>đ</td>
+<td><form class="qty-control" action="/cart/<%= i %>/quantity" method="post"><button name="action" value="minus" class="qty-btn" aria-label="Giảm số lượng">−</button><span><%= x.quantity %></span><button name="action" value="plus" class="qty-btn" aria-label="Tăng số lượng">+</button></form></td>
+<td><b><%= (Number(x.unit_price)*Number(x.quantity)).toLocaleString('vi-VN') %>đ</b></td>
+<td><form action="/cart/<%= i %>/delete" method="post"><button class="btn danger small">Xóa</button></form></td>
+</tr><% }) %></tbody></table></div>
+<div class="cart-summary"><div><span>Tổng số lượng đã chọn</span><strong><%= totals.totalQuantity %> đôi</strong></div><div><span>Tổng tiền đã chọn</span><strong><%= Number(totals.totalMoney).toLocaleString('vi-VN') %>đ</strong></div></div>
+<div class="form-actions cart-actions"><form action="/cart/clear" method="post" onsubmit="return confirm('Xóa toàn bộ giỏ hàng?')"><button class="btn danger">Xóa giỏ</button></form><a class="btn" href="/products">+ Mua thêm</a><a class="btn primary <%= totals.selectedCount?'':'disabled-link' %>" href="<%= totals.selectedCount?'/checkout':'#' %>">Tiến hành đặt đơn →</a></div>
+<% } %></div>
+<%- include('partials/footer') %>
