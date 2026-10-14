@@ -1,0 +1,135 @@
+<%- include('partials/header') %>
+<div class="order-detail-toolbar">
+  <a class="btn" href="/support">← Quay lại CSKH</a>
+  <a class="btn" href="<%= isAdmin?'/orders':'/my-orders' %>#order-<%= order.id %>">📦 Danh sách đơn</a>
+  <% if(order.tracking_code){ %><a class="btn" href="/orders/<%= order.id %>/ghsv">🔎 Tra cứu GHSV</a><% } %>
+  <a class="btn primary" href="/support/new?order_id=<%= order.id %>">🎧 Tạo yêu cầu CSKH</a>
+</div>
+
+<div class="panel order-detail-hero">
+  <div class="order-detail-heading">
+    <div><span class="detail-eyebrow">ĐƠN HÀNG ĐƯỢC LIÊN KẾT</span>
+      <h2>Đơn #<%= order.id %> <span class="detail-bee-code"><%= beeCode %></span></h2>
+      <p>Ngày tạo: <%= new Date(order.created_at).toLocaleString('vi-VN') %></p>
+    </div>
+    <span class="detail-status <%= order.status==='Hoàn thành'?'detail-status-success':(['Hoàn','Hủy'].includes(order.status)?'detail-status-danger':'') %>"><%= order.status %></span>
+  </div>
+  <% if(focusTicket){ %>
+  <section class="order-focused-ticket" aria-label="Yêu cầu đang xem">
+    <strong>🎧 Đang xem yêu cầu CSKH #<%= focusTicket.id %>: <%= focusTicket.request_type %></strong>
+    <p><%= focusTicket.note||'CTV không ghi chú.' %></p>
+    <small>Trạng thái xử lý: <b><%= focusTicket.status %></b><% if(focusTicket.admin_note){ %> · Phản hồi: <%= focusTicket.admin_note %><% } %></small>
+  </section>
+  <% } %>
+  <div class="order-detail-grid">
+    <div class="order-detail-field"><span>Khách hàng</span><strong><%= order.customer_name %></strong></div>
+    <div class="order-detail-field"><span>Số điện thoại khách</span><strong><%= order.phone %></strong></div>
+    <div class="order-detail-field order-detail-wide"><span>Địa chỉ nhận hàng</span><strong><%= order.address %></strong></div>
+    <% if(isAdmin){ %><div class="order-detail-field"><span>Cộng tác viên</span><strong><%= order.ctv_name||'-' %></strong></div><% } %>
+    <div class="order-detail-field"><span>Trạng thái GHSV đã lưu</span><strong><%= order.ghsv_status||'Chưa đồng bộ' %></strong><% if(order.ghsv_synced_at){ %><small>Cập nhật: <%= new Date(order.ghsv_synced_at).toLocaleString('vi-VN') %></small><% } %></div>
+    <% if(isAdmin){ %>
+      <div class="order-detail-field"><span>Mã khách hàng/client code GHSV</span><strong><%= order.tracking_code||'Chưa có' %></strong></div>
+      <div class="order-detail-field"><span>Mã vận đơn GHSV đã lưu</span><strong><%= order.ghsv_required_code||order.ghsv_order_code||'Chưa có' %></strong></div>
+    <% } %>
+    <% if(order.note){ %><div class="order-detail-field order-detail-wide"><span>Ghi chú đơn hàng</span><strong><%= order.note %></strong></div><% } %>
+  </div>
+</div>
+
+<div class="order-detail-columns">
+  <section class="panel">
+    <h2>👟 Sản phẩm cần xử lý</h2>
+    <div class="detail-items">
+      <% if(order.items && order.items.length){ %>
+        <% order.items.forEach(item=>{ %>
+        <div class="detail-item-row">
+          <div><strong><%= item.product_name %></strong><small><%= item.product_variant?variantLabel(item.product_variant)+' · ':'' %>Size <%= item.size||'-' %></small></div>
+          <span class="detail-qty">×<%= item.quantity %></span>
+        </div>
+        <% }) %>
+      <% } else { %>
+        <div class="detail-item-row"><div><strong><%= order.product_name %></strong><small><%= order.product_variant?variantLabel(order.product_variant)+' · ':'' %>Size <%= order.size||'-' %></small></div><span class="detail-qty">×<%= order.quantity %></span></div>
+      <% } %>
+    </div>
+    <div class="order-detail-grid detail-totals">
+      <div class="order-detail-field"><span>Tổng số lượng</span><strong><%= order.quantity %> đôi</strong></div>
+      <div class="order-detail-field"><span>Tiền thu hộ (COD)</span><strong><%= Number(order.cod||0).toLocaleString('vi-VN') %>đ</strong></div>
+      <% if(isAdmin){ %>
+        <div class="order-detail-field"><span>Giá gốc</span><strong><%= Number(order.product_cost||0).toLocaleString('vi-VN') %>đ</strong></div>
+        <div class="order-detail-field"><span>Thuế</span><strong><%= Number(order.tax_amount||0).toLocaleString('vi-VN') %>đ</strong></div>
+      <% } %>
+      <div class="order-detail-field"><span>Lãi CTV dự tính</span><strong><%= Number(order.ctv_profit||0).toLocaleString('vi-VN') %>đ</strong></div>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>🚚 Kho & lấy hàng</h2>
+    <div class="order-detail-grid">
+      <div class="order-detail-field"><span>Trạng thái kiểm tra kho</span><strong><%= order.warehouse_status||'Chưa được gán kho' %></strong></div>
+      <% if(isAdmin){ %>
+        <div class="order-detail-field"><span>Kho phụ trách</span><strong><%= order.warehouse_name||pickupWarehouse?.name||'Chưa gán' %></strong></div>
+        <div class="order-detail-field order-detail-wide"><span>Địa chỉ kho lấy hàng (GHSV)</span><strong><%= pickupWarehouse?.ghsv_address||'Chưa có địa chỉ kho' %></strong></div>
+        <div class="order-detail-field"><span>Liên hệ kho (Zalo)</span><strong><%= order.warehouse_zalo_phone||pickupWarehouse?.zalo_phone||'Chưa có' %></strong></div>
+        <div class="order-detail-field"><span>Trạng thái tạo vận đơn</span><strong><%= order.ghsv_created_at?'Đã tạo trên GHSV':(order.ghsv_create_error?'Tạo GHSV lỗi':'Chưa tạo trên GHSV') %></strong></div>
+        <% if(order.ghsv_create_error){ %><div class="order-detail-field order-detail-wide"><span>Lỗi lần gần nhất</span><strong><%= order.ghsv_create_error %></strong></div><% } %>
+      <% } else { %>
+        <div class="order-detail-field"><span>Vận chuyển</span><strong><%= order.status==='Đang giao'?'Đang giao hàng':(order.status==='Hoàn thành'?'Đã giao thành công':(order.warehouse_status==='Đã xác nhận'?'Kho đã xác nhận':'Đang chờ shop/kho xử lý')) %></strong></div>
+        <div class="order-detail-field order-detail-wide"><span>Mã tra cứu Bee</span><strong><%= beeCode %></strong></div>
+      <% } %>
+    </div>
+    <p class="detail-hint">Trạng thái thể hiện dữ liệu Bee đã lưu. Bấm “Tra cứu GHSV” để kiểm tra hành trình nếu đơn có mã GHSV.</p>
+    <div id="order-shipper" class="order-shipper-card">
+      <h3>📞 Liên hệ shipper GHSV</h3>
+      <p class="detail-hint">Lấy số điện thoại shipper gắn với chính đơn này từ GHSV. Số chỉ xuất hiện nếu GHSV cung cấp.</p>
+      <div id="bee-shipper-result" role="status" aria-live="polite">Chưa tra cứu số shipper.</div>
+      <div class="order-shipper-actions">
+        <button class="btn primary" id="bee-shipper-lookup" type="button" data-lookup-url="/orders/<%= order.id %>/ghsv?format=shipper">📞 Lấy SĐT shipper</button>
+        <a class="btn" href="/orders/<%= order.id %>/ghsv">🔎 Xem hành trình GHSV</a>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+(function(){
+  const button=document.getElementById('bee-shipper-lookup');
+  const result=document.getElementById('bee-shipper-result');
+  if(!button || !result) return;
+  let loading=false;
+  async function loadShipper(){
+    if(loading) return;
+    loading=true;button.disabled=true;button.textContent='Đang lấy từ GHSV…';
+    result.textContent='Đang kiểm tra shipper của đơn này trên GHSV…';
+    try{
+      const response=await fetch(button.dataset.lookupUrl,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+      if(!response.ok) throw new Error(response.status===404?'Không tìm thấy đơn hàng hoặc không có quyền xem.':'Không thể tra GHSV lúc này (HTTP '+response.status+').');
+      const data=await response.json();
+      result.replaceChildren();
+      if(data.name){const name=document.createElement('div');name.textContent='Shipper: '+data.name;result.appendChild(name);}
+      if(data.available && /^0\d{9,10}$/.test(data.phone||'')){
+        const call=document.createElement('a');call.className='btn primary';call.href='tel:'+data.phone;call.textContent='📞 Gọi '+data.phone;
+        result.appendChild(call);
+        const note=document.createElement('small');note.textContent='Số lấy từ GHSV tại thời điểm tra cứu, có thể thay đổi khi đổi shipper.';result.appendChild(note);
+      }else{
+        const note=document.createElement('p');note.textContent=data.message||'Chưa có số điện thoại shipper trên GHSV.';result.appendChild(note);
+      }
+    }catch(e){result.textContent=e.message||'Không tra cứu được lúc này, vui lòng thử lại.';}
+    finally{button.disabled=false;button.textContent='↻ Cập nhật SĐT shipper';loading=false;}
+  }
+  button.addEventListener('click',loadShipper);
+  if(location.hash==='#order-shipper') loadShipper();
+})();
+</script>
+
+<section class="panel detail-support-panel" id="support-history">
+  <div class="panel-head"><h2>🎧 Yêu cầu CSKH liên quan đến đơn #<%= order.id %></h2><p>Toàn bộ yêu cầu bên dưới đều được liên kết trực tiếp với đơn hàng này.</p></div>
+  <% if(!tickets.length){ %><p>Đơn này chưa có yêu cầu CSKH nào.</p><% } %>
+  <% tickets.forEach(t=>{ %>
+    <div class="detail-ticket <%= focusTicket && Number(focusTicket.id)===Number(t.id)?'detail-ticket-focused':'' %>" id="detail-ticket-<%= t.id %>">
+      <div class="detail-ticket-head"><strong>#<%= t.id %> · <%= t.request_type %></strong><span class="badge"><%= t.status %></span></div>
+      <small><%= new Date(t.created_at).toLocaleString('vi-VN') %></small>
+      <p><%= t.note||'Không có ghi chú' %></p>
+      <div class="detail-ticket-reply"><b>Chủ shop phản hồi:</b> <%= t.admin_note||'Chưa có phản hồi' %></div>
+      <% if(isAdmin){ %><a class="text-link" href="/support#support-ticket-<%= t.id %>">Xử lý yêu cầu này trong CSKH →</a><% } %>
+    </div>
+  <% }) %>
+  <a class="btn primary" href="/support/new?order_id=<%= order.id %>">+ Thêm yêu cầu CSKH cho đơn</a>
+</section>
+<%- include('partials/footer') %>

@@ -1,0 +1,19 @@
+<%- include('partials/header') %>
+<div class="panel">
+  <div class="panel-head"><div><h2>Nhật ký bảo mật & thao tác</h2><p>300 sự kiện gần nhất. Dùng để kiểm tra ai đã làm gì và lúc nào.</p></div></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Thời gian</th><th>Người thực hiện</th><th>Hành động</th><th>Đối tượng</th><th>Chi tiết</th><th>IP</th></tr></thead>
+    <tbody>
+    <% logs.forEach(l=>{ %><tr>
+      <td><%= new Date(l.created_at).toLocaleString('vi-VN') %></td>
+      <td><b><%= l.actor_name || 'Khách/chưa đăng nhập' %></b><br><small><%= l.actor_role || '' %></small></td>
+      <td><span class="badge"><%= l.action %></span></td>
+      <td><%= l.entity_type || '-' %> <%= l.entity_id ? '#'+l.entity_id : '' %></td>
+      <td><small><%= JSON.stringify(l.details || {}) %></small></td>
+      <td><small><%= l.ip || '-' %></small></td>
+    </tr><% }) %>
+    <% if(!logs.length){ %><tr><td colspan="6">Chưa có nhật ký.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</div>
+<%- include('partials/footer') %>
