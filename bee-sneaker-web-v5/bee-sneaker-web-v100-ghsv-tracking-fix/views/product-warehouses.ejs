@@ -1,0 +1,38 @@
+<%- include('partials/header') %>
+<div class="panel form-panel">
+  <div class="toolbar"><a class="btn" href="/products/<%= product.id %>/edit#warehouse-priority">← <%= product.name %></a><a class="btn" href="/warehouses">🏬 Quản lý kho</a></div>
+  <h2>Kho ưu tiên RIÊNG theo phân loại: <%= product.name %></h2>
+  <p class="muted"><b>BEST</b> và <b>SIÊU CẤP</b> có danh sách ưu tiên hoàn toàn riêng. Bee chỉ chuyển sang kho kế tiếp khi kho trước xác nhận <b>HẾT HẲN mẫu/phân loại đó</b>; không chuyển chỉ vì thiếu một size.</p>
+  <% const activeWarehouses=(warehouses||[]).filter(w=>w.is_active); const pricedVariants=Object.entries(product?.variant_prices||{}).filter(([,v])=>Number(v||0)>0).map(([k])=>k); const oldVariants=(rules||[]).map(r=>String(r.variant||'')).filter(v=>v&&v!=='*'); const variants=[...new Set([...pricedVariants,...oldVariants])]; const wildcard=(rules||[]).filter(r=>String(r.variant||'*')==='*').sort((a,b)=>Number(a.priority)-Number(b.priority)); %>
+  <% if(!activeWarehouses.length){ %><div class="alert error">Chưa có kho đang hoạt động.</div><% } else { %>
+  <form action="/products/<%= product.id %>/warehouses" method="post" id="warehouseRulesForm">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="warehouse-variant-groups">
+    <% variants.forEach(v=>{ const exact=(rules||[]).filter(r=>String(r.variant||'')===String(v)).sort((a,b)=>Number(a.priority)-Number(b.priority)); const rows=exact.length?exact:(wildcard.length?wildcard:[{warehouse_id:'',priority:1,is_exhausted:false}]); %>
+      <section class="warehouse-variant-group" data-variant="<%= v %>">
+        <div class="warehouse-variant-head"><div><h3><%= variantLabel(v) %></h3><small>Kho 1 → Kho 2 → Kho 3 chỉ của <%= variantLabel(v) %>.</small></div><button class="btn add-variant-rule" type="button" data-variant="<%= v %>">+ Thêm kho dự phòng</button></div>
+        <div class="variant-rule-rows">
+          <% rows.forEach((r,i)=>{ %><div class="warehouse-rule-card">
+            <div class="warehouse-priority-badge">Kho <%= i+1 %></div>
+            <input type="hidden" name="rule_variant" value="<%= v %>">
+            <label>Kho<select name="warehouse_id" required><option value="">-- Chọn kho --</option><% activeWarehouses.forEach(w=>{ %><option value="<%= w.id %>" <%= Number(r.warehouse_id)===Number(w.id)?'selected':'' %>><%= w.name %> <%= w.zalo_phone?('· '+w.zalo_phone):'' %></option><% }) %></select></label>
+            <label>Ưu tiên<input name="priority" type="number" min="1" max="999" value="<%= r.priority||i+1 %>"></label>
+            <label>Trạng thái<select name="rule_exhausted"><option value="0" <%= !r.is_exhausted?'selected':'' %>>✅ Đang dùng</option><option value="1" <%= r.is_exhausted?'selected':'' %>>⛔ Hết hẳn mẫu này</option></select></label>
+            <button class="btn danger small" type="button">Xóa</button>
+          </div><% }) %>
+        </div>
+      </section>
+    <% }) %>
+    </div>
+    <div class="form-actions" style="margin-top:12px"><button class="btn primary" type="submit">Lưu thứ tự kho theo phân loại</button></div>
+  </form>
+  <% } %>
+  <div class="panel" style="margin-top:18px;padding:14px"><b>Logic V80:</b><br>Ví dụ BEST = A → B. Mọi đơn BEST sẽ hỏi A trước. Chỉ khi A bấm <b>HẾT HẲN MẪU NÀY</b>, Bee mới đánh dấu A đã hết BEST của mẫu này và chuyển sang B. SIÊU CẤP chạy một chuỗi riêng.</div>
+</div>
+<template id="ruleTpl"><div class="warehouse-rule-card"><div class="warehouse-priority-badge">Kho</div><input type="hidden" name="rule_variant" value=""><label>Kho<select name="warehouse_id" required><option value="">-- Chọn kho --</option><% activeWarehouses.forEach(w=>{ %><option value="<%= w.id %>"><%= w.name %> <%= w.zalo_phone?('· '+w.zalo_phone):'' %></option><% }) %></select></label><label>Ưu tiên<input name="priority" type="number" min="1" max="999" value="1"></label><label>Trạng thái<select name="rule_exhausted"><option value="0" selected>✅ Đang dùng</option><option value="1">⛔ Hết hẳn mẫu này</option></select></label><button class="btn danger small" type="button">Xóa</button></div></template>
+<script>
+function renumberVariantGroup(group){ if(!group)return; group.querySelectorAll('.warehouse-rule-card').forEach((card,i)=>{ const b=card.querySelector('.warehouse-priority-badge'); if(b)b.textContent='Kho '+(i+1); const p=card.querySelector('input[name="priority"]'); if(p)p.value=i+1; }); }
+document.querySelectorAll('.warehouse-variant-group').forEach(group=>{ renumberVariantGroup(group); group.querySelectorAll('.warehouse-rule-card .btn.danger').forEach(btn=>btn.addEventListener('click',()=>{btn.closest('.warehouse-rule-card').remove();renumberVariantGroup(group);})); });
+document.querySelectorAll('.add-variant-rule').forEach(btn=>btn.addEventListener('click',()=>{ const group=btn.closest('.warehouse-variant-group'),target=group?.querySelector('.variant-rule-rows'),tpl=document.getElementById('ruleTpl'); if(!group||!target||!tpl)return; const frag=tpl.content.cloneNode(true),card=frag.querySelector('.warehouse-rule-card'); card.querySelector('input[name="rule_variant"]').value=btn.dataset.variant||''; card.querySelector('.btn.danger').addEventListener('click',()=>{card.remove();renumberVariantGroup(group);}); target.appendChild(frag); renumberVariantGroup(group); }));
+</script>
+<%- include('partials/footer') %>
