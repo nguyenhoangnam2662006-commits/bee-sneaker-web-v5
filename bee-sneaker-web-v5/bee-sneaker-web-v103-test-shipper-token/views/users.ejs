@@ -1,0 +1,29 @@
+<%- include('partials/header') %>
+<div class="panel"><h2>CTV chờ duyệt</h2><p>Chỉ duyệt số điện thoại mà bạn đã kiểm tra trực tiếp (gọi điện/Zalo). Đăng ký thủ công không chứng minh quyền sở hữu số điện thoại.</p><div class="table-wrap"><table><thead><tr><th>Họ và tên</th><th>SĐT</th><th>Ngày đăng ký</th><th>Thao tác</th></tr></thead><tbody>
+<% const pending=users.filter(x=>x.role==='ctv'&&x.approval_status==='pending'); %>
+<% if(!pending.length){ %><tr><td colspan="4">Không có tài khoản chờ duyệt.</td></tr><% } %>
+<% pending.forEach(u=>{ %><tr><td><b><%= u.full_name %></b></td><td><%= u.phone||u.username %></td><td><%= new Date(u.created_at).toLocaleString('vi-VN') %></td><td><div class="action-row"><form method="post" action="/users/<%= u.id %>/approval" onsubmit="return confirm('Duyệt CTV này?')"><input type="hidden" name="decision" value="approved"><button class="btn primary small">✓ Duyệt</button></form><form method="post" action="/users/<%= u.id %>/approval" onsubmit="return confirm('Từ chối yêu cầu đăng ký này?')"><input type="hidden" name="decision" value="rejected"><button class="btn danger small">Từ chối</button></form></div></td></tr><% }) %>
+</tbody></table></div></div>
+
+<div class="panel"><h2>Danh sách tài khoản</h2>
+<p class="muted">V75: mỗi CTV có thể dùng tài khoản GHSV riêng. Kho vẫn chỉ dùng <b>1 link Bee Kho</b>; khi kho bấm CÒN, backend tự chọn đúng token + shop_id của CTV sở hữu đơn.</p>
+<div class="table-wrap"><table><thead><tr><th>Họ tên</th><th>SĐT / tài khoản</th><th>Quyền</th><th>Trạng thái</th><th>GHSV riêng</th><th>Thao tác</th></tr></thead><tbody>
+<% users.forEach(u=>{ %><tr>
+<td><%= u.full_name %></td>
+<td><b><%= u.phone||u.username %></b></td>
+<td><%= u.role==='admin'?'Chủ shop':'CTV' %></td>
+<td><%= u.role==='admin'?'Hoạt động':u.approval_status==='pending'?'Chờ duyệt':u.approval_status==='rejected'?'Từ chối':'Đã duyệt' %></td>
+<td>
+  <% if(u.role==='ctv'){ %>
+    <% if(u.ghsv_connected){ %>
+      <b style="color:#15803d">✅ Đã kết nối</b>
+      <div class="muted"><%= Number(u.ghsv_mapped_shop_count||0) %>/<%= Number(u.ghsv_shop_count||0) %> shop đã map Bee Kho</div>
+    <% } else { %>
+      <span style="color:#b45309">Chưa kết nối</span>
+    <% } %>
+    <div style="margin-top:6px"><a class="btn small" href="/users/<%= u.id %>/ghsv">⚙️ GHSV CTV</a></div>
+  <% } else { %>-<% } %>
+</td>
+<td><% if(u.id!==user.id){ %><form action="/users/<%= u.id %>/delete" method="post" onsubmit="return confirm('Xóa tài khoản này?')"><button class="btn danger small">Xóa</button></form><% } %></td>
+</tr><% }) %></tbody></table></div></div>
+<%- include('partials/footer') %>
