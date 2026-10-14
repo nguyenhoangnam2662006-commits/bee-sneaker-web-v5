@@ -1,0 +1,45 @@
+<%- include('partials/header') %>
+<div class="panel support-list-panel">
+  <div class="panel-head"><div><h2>Chăm sóc khách hàng</h2>
+    <p>Ấn <b>Xem đơn</b> để mở đúng đơn hàng, xem thông tin lấy hàng, trạng thái và lịch sử yêu cầu liên quan.</p>
+    <p>CTV chỉ thấy yêu cầu của mình. Chủ shop thấy toàn bộ yêu cầu.</p>
+  </div></div>
+  <div class="table-wrap"><table class="support-table">
+    <thead><tr><th>Mã yêu cầu</th><th>Đơn liên quan</th><% if(user.role==='admin'){ %><th>CTV</th><% } %><th>Loại xử lý</th><th>Ghi chú CTV</th><th>Trạng thái</th><th>Phản hồi chủ shop</th><th>Thời gian</th></tr></thead>
+    <tbody>
+    <% if(!tickets.length){ %><tr><td colspan="<%= user.role==='admin'?8:7 %>" class="empty">Chưa có yêu cầu CSKH.</td></tr><% } %>
+    <% tickets.forEach(t=>{ const beeCode=`BEE${String(t.order_id).padStart(6,'0')}`; %>
+      <tr id="support-ticket-<%= t.id %>">
+        <td><strong>#<%= t.id %></strong></td>
+        <td class="support-order-cell">
+          <a class="support-order-name" href="/orders/<%= t.order_id %>/detail?ticket_id=<%= t.id %>">Đơn #<%= t.order_id %></a>
+          <small><%= beeCode %></small>
+          <small class="support-order-summary"><%= t.product_name||'Chưa có tên sản phẩm' %></small>
+          <% if(user.role==='admin'){ %>
+            <small>Mã GHSV: <%= t.ghsv_required_code||t.tracking_code||'Chưa có' %></small>
+            <% if(t.warehouse_status){ %><small>Kho: <%= t.warehouse_name||'Chưa có kho' %> · <%= t.warehouse_status %></small><% } %>
+          <% } %>
+          <a class="btn small support-view-btn" href="/orders/<%= t.order_id %>/detail?ticket_id=<%= t.id %>">👁 Xem đơn</a>
+          <a class="btn small support-view-btn" href="/orders/<%= t.order_id %>/detail?ticket_id=<%= t.id %>#order-shipper">📞 SĐT shipper</a>
+        </td>
+        <% if(user.role==='admin'){ %><td><%= t.ctv_name||'-' %></td><% } %>
+        <td><b><%= t.request_type %></b></td>
+        <td class="support-note-cell"><%= t.note||'-' %></td>
+        <td><span class="badge"><%= t.status %></span><small>Đơn: <%= t.order_status %></small></td>
+        <td>
+        <% if(user.role==='admin'){ %>
+          <form class="support-reply-form" method="post" action="/support/<%= t.id %>/update">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <select name="status" aria-label="Trạng thái yêu cầu #<%= t.id %>"><% ['Mới','Đang xử lý','Đã xử lý'].forEach(s=>{ %><option value="<%= s %>" <%= t.status===s?'selected':'' %>><%= s %></option><% }) %></select>
+            <input name="admin_note" value="<%= t.admin_note||'' %>" aria-label="Phản hồi yêu cầu #<%= t.id %>" placeholder="Phản hồi/ghi chú">
+            <button class="btn small" type="submit">Lưu</button>
+          </form>
+        <% } else { %><%= t.admin_note||'Chưa có phản hồi' %><% } %>
+        </td>
+        <td><%= new Date(t.created_at).toLocaleString('vi-VN') %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+</div>
+<%- include('partials/footer') %>

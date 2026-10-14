@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title><%= title %></title><link rel="manifest" href="/kho/<%= warehouse.access_token %>/manifest.webmanifest"><meta name="theme-color" content="#111827">
+<link rel="stylesheet" href="/style.css"><style>
+body{margin:0;background:#f4f6fa;color:#111827;font-family:system-ui,-apple-system,Segoe UI,sans-serif}.kho-wrap{max-width:720px;margin:auto;padding:18px}.kho-head{background:#111827;color:white;padding:18px;border-radius:18px;margin-bottom:14px}.kho-head h1{margin:0 0 5px}.push-box,.order-card{background:white;border:1px solid #e5e7eb;border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 2px 10px rgba(0,0,0,.04)}.push-ok{color:#067647;font-weight:700}.realtime-ok{margin-top:10px;padding:10px 12px;border-radius:12px;background:#ecfdf3;color:#067647;font-weight:700}.realtime-warn{margin-top:10px;padding:10px 12px;border-radius:12px;background:#fffaeb;color:#b54708;font-weight:700}.new-order-flash{position:sticky;top:8px;z-index:30;background:#fff3cd;color:#7a4b00;border:2px solid #fdb022;border-radius:14px;padding:12px 14px;margin:10px 0;font-weight:800;box-shadow:0 6px 20px rgba(0,0,0,.12)}.result-banner{padding:13px 14px;border-radius:14px;margin:12px 0;font-weight:700}.result-banner.success{background:#d1fadf;color:#05603a;border:1px solid #a6f4c5}.result-banner.error{background:#fee4e2;color:#b42318;border:1px solid #fecdca}.order-card h3{margin:0 0 8px}.meta{color:#667085;font-size:14px}.answer-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.big-btn{border:0;border-radius:14px;padding:18px 12px;font-size:18px;font-weight:800;cursor:pointer}.yes{background:#d1fadf;color:#05603a}.no{background:#fee4e2;color:#b42318}.empty-kho{text-align:center;padding:40px 10px;color:#667085}.status-line{margin-top:10px;font-size:14px}.install-note{font-size:13px;color:#667085;line-height:1.5}.refresh{float:right;background:#fff;color:#111827;border:0;border-radius:10px;padding:8px 12px;font-weight:700}.creating{opacity:.6;pointer-events:none}@media(max-width:480px){.kho-wrap{padding:10px}.answer-grid{grid-template-columns:1fr 1fr}.big-btn{font-size:17px;padding:17px 8px}}
+</style></head><body>
+<div class="kho-wrap">
+  <div class="kho-head"><button class="refresh" onclick="location.reload()">↻ Tải lại</button><div>🐝 Bee Kho</div><h1><%= warehouse.name %></h1><div style="opacity:.8"><%= warehouse.ghsv_address||'' %></div></div>
+  <% if(khoMessage){ %><div class="result-banner <%= khoMessageType==='error'?'error':'success' %>"><%= khoMessage %></div><% } %>
+  <div class="push-box">
+    <b>🔔 Thông báo / Realtime</b>
+    <p id="pushState" class="install-note">Bee Kho sẽ tự kiểm tra đơn mới khi trang đang mở. Nếu máy hỗ trợ Push, Bee cũng sẽ gửi thông báo khi app đang đóng/nền.</p>
+    <button id="enablePush" class="btn primary" type="button">Bật thông báo / realtime</button>
+    <div id="realtimeState" class="realtime-ok">🟢 Realtime đang kiểm tra đơn mới mỗi 5 giây khi Bee Kho đang mở.</div>
+    <div class="install-note" style="margin-top:10px">Máy không hỗ trợ Push vẫn dùng được CÒN HÀNG / HẾT HẲN bình thường khi Bee Kho đang mở. Android/iPhone hỗ trợ Push thì có thể nhận thông báo cả khi không mở trang.</div>
+  </div>
+  <div id="newOrderFlash" class="new-order-flash" style="display:none">🔔 Có đơn mới cần kiểm tra — đang tải sản phẩm...</div>
+  <div id="orders">
+  <% if(!pending.length && requestedOrderId){ %><div class="result-banner error">⚠️ Điện thoại vừa nhận push cho đơn #<%= requestedOrderId %> nhưng máy chủ chưa thấy đơn này trong hàng chờ của kho. Hãy bấm Tải lại; nếu vẫn còn, báo Admin kiểm tra gán kho của sản phẩm.</div><% } %>
+  <% if(!pending.length){ %><div class="order-card empty-kho">✅ Hiện không có đơn nào chờ kho check.</div><% } %>
+  <% pending.forEach(o=>{ %><div class="order-card" id="order-<%= o.id %>" data-order-id="<%= o.id %>">
+    <h3>Đơn <%= o.tracking_code||('BEE'+String(o.id).padStart(6,'0')) %></h3>
+    <div style="display:flex;gap:12px;align-items:center">
+      <% if(o.check_product_id){ %><img src="/products/<%= o.check_product_id %>/image" alt="Ảnh sản phẩm" style="width:82px;height:82px;object-fit:cover;border-radius:12px;border:1px solid #e5e7eb" onerror="this.style.display='none'"><% } %>
+      <div><div><b><%= o.check_product_name||o.product_name %></b></div>
+      <div><%= o.check_product_variant||'' %> <%= o.check_size?('• Size '+o.check_size):'' %> • SL <b><%= o.check_quantity||o.quantity %></b></div></div>
+    </div>
+    <div class="meta">Tạo lúc <%= new Date(o.created_at).toLocaleString('vi-VN') %></div>
+    <div class="answer-grid">
+      <form method="post" action="/kho/<%= warehouse.access_token %>/orders/<%= o.id %>/reply" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Đang xử lý...';"><input type="hidden" name="answer" value="có"><button type="submit" class="big-btn yes" style="width:100%">✅ CÒN HÀNG</button></form>
+      <form method="post" action="/kho/<%= warehouse.access_token %>/orders/<%= o.id %>/reply" onsubmit="if(!confirm('Chỉ bấm HẾT HẲN khi kho đã hết toàn bộ mẫu/phân loại này. Bee sẽ bỏ kho này cho các đơn sau và chuyển sang kho ưu tiên tiếp theo. Xác nhận?')) return false; this.querySelector('button').disabled=true;this.querySelector('button').textContent='Đang xử lý...';"><input type="hidden" name="answer" value="hết"><button type="submit" class="big-btn no" style="width:100%">❌ HẾT HẲN</button></form>
+    </div>
+  </div><% }) %>
+  </div>
+</div>
+<script>
+const TOKEN=<%- JSON.stringify(warehouse.access_token) %>, CSRF=<%- JSON.stringify(csrfToken) %>, VAPID=<%- JSON.stringify(vapidPublicKey) %>;
+function b64ToUint8(v){const p='='.repeat((4-v.length%4)%4),b=(v+p).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(b),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a}
+
+let alertAudioCtx=null, wakeLock=null, checkingPending=false;
+const originalTitle=document.title;
+function primeLocalAlert(){
+  try{
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(Ctx){ alertAudioCtx=alertAudioCtx||new Ctx(); if(alertAudioCtx.state==='suspended') alertAudioCtx.resume().catch(()=>{}); }
+  }catch(e){}
+}
+function playLocalAlert(){
+  try{
+    if(navigator.vibrate) navigator.vibrate([250,120,250]);
+    if(alertAudioCtx && alertAudioCtx.state==='running'){
+      const osc=alertAudioCtx.createOscillator(), gain=alertAudioCtx.createGain();
+      osc.type='sine'; osc.frequency.value=880; gain.gain.value=.12;
+      osc.connect(gain); gain.connect(alertAudioCtx.destination); osc.start();
+      setTimeout(()=>{try{osc.stop()}catch{}},420);
+    }
+  }catch(e){}
+}
+function flashNewOrder(){
+  const el=document.getElementById('newOrderFlash'); if(el) el.style.display='block';
+  document.title='🔔 CÓ ĐƠN MỚI • Bee Kho';
+  playLocalAlert();
+}
+async function requestWakeLock(){
+  if(!('wakeLock' in navigator) || document.hidden) return;
+  try{ if(!wakeLock) wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener?.('release',()=>{wakeLock=null}); }catch(e){}
+}
+async function tryEnablePush(){
+  const st=document.getElementById('pushState');
+  try{
+    if(!('serviceWorker' in navigator)) throw new Error('Máy này không hỗ trợ Push web. Realtime khi mở Bee Kho vẫn hoạt động.');
+    if(!('Notification' in window)) throw new Error('Máy này không hỗ trợ quyền Push web. Realtime khi mở Bee Kho vẫn hoạt động.');
+    if(!VAPID) throw new Error('Bee chưa có khóa Web Push. Realtime khi mở Bee Kho vẫn hoạt động.');
+    const reg=await navigator.serviceWorker.register('/sw.js');
+    const swReg=(await navigator.serviceWorker.ready)||reg;
+    if(!swReg.pushManager) throw new Error('Thiết bị này chưa hỗ trợ Push. Realtime khi mở Bee Kho vẫn hoạt động.');
+    let perm=Notification.permission;
+    if(perm!=='granted') perm=await Notification.requestPermission();
+    if(perm!=='granted') throw new Error(perm==='denied'?'Push đang bị chặn. Realtime khi mở Bee Kho vẫn hoạt động.':'Chưa cho phép Push. Realtime khi mở Bee Kho vẫn hoạt động.');
+    let sub=await swReg.pushManager.getSubscription();
+    if(!sub) sub=await swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToUint8(VAPID)});
+    const r=await fetch(`/kho/${TOKEN}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json','x-csrf-token':CSRF},body:JSON.stringify({subscription:sub.toJSON()})});
+    let detail=''; try{detail=(await r.json()).message||''}catch{}
+    if(!r.ok) throw new Error(detail||'Không lưu được thiết bị lên Bee.');
+    st.textContent='✅ Push đã bật. Máy này sẽ nhận thông báo Bee Kho khi hệ điều hành cho phép.'; st.className='push-ok';
+    return true;
+  }catch(e){
+    st.textContent='ℹ️ '+(e&&e.message?e.message:String(e)); st.className='install-note';
+    return false;
+  }
+}
+async function enableRealtime(){
+  const btn=document.getElementById('enablePush'), rs=document.getElementById('realtimeState');
+  btn.disabled=true; btn.textContent='Đang bật...';
+  localStorage.setItem('beeKhoRealtime','1');
+  primeLocalAlert(); await requestWakeLock();
+  const pushOk=await tryEnablePush();
+  rs.textContent=pushOk?'🟢 Realtime + Push đã sẵn sàng.':'🟢 Realtime đã bật. Giữ Bee Kho mở để nhận đơn mới ngay cả khi máy không hỗ trợ Push.';
+  rs.className='realtime-ok';
+  btn.textContent=pushOk?'✅ Đã bật Push + realtime':'✅ Realtime đã bật';
+  btn.disabled=false;
+}
+document.getElementById('enablePush').addEventListener('click',enableRealtime);
+
+// V74: fallback cho mọi thiết bị. Khi Bee Kho đang mở, trang luôn polling 5 giây.
+// Nếu có đơn mới: rung/âm thanh (nếu trình duyệt cho phép) rồi tự tải đúng sản phẩm + nút CÒN HÀNG / HẾT HẲN.
+function currentIds(){return Array.from(document.querySelectorAll('[data-order-id]')).map(x=>String(x.dataset.orderId))}
+let lastIds=currentIds();
+async function refreshPendingIfChanged(){
+  if(checkingPending || document.hidden) return;
+  checkingPending=true;
+  try{
+    const r=await fetch(`/kho/${TOKEN}/pending?ts=${Date.now()}`,{headers:{'Accept':'application/json'},cache:'no-store'});
+    if(!r.ok) return;
+    const j=await r.json();
+    const next=(j.pending||[]).map(o=>String(o.id));
+    const oldSet=new Set(lastIds), newOnes=next.filter(id=>!oldSet.has(id));
+    const changed=next.slice().sort().join(',')!==lastIds.slice().sort().join(',');
+    if(newOnes.length){ flashNewOrder(); setTimeout(()=>location.reload(),700); return; }
+    if(changed){ location.reload(); return; }
+  }catch(e){} finally{ checkingPending=false; }
+}
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message',ev=>{
+    if(ev.data && ev.data.type==='BEE_KHO_NEW_ORDER'){ flashNewOrder(); setTimeout(()=>location.reload(),500); }
+  });
+}
+window.addEventListener('focus',refreshPendingIfChanged);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ requestWakeLock(); refreshPendingIfChanged(); } });
+setInterval(refreshPendingIfChanged,5000);
+
+// Nếu người dùng từng bật realtime, giữ trạng thái hiển thị và cố giữ màn hình thức khi app đang mở.
+if(localStorage.getItem('beeKhoRealtime')==='1'){
+  const rs=document.getElementById('realtimeState');
+  rs.textContent='🟢 Realtime đang hoạt động. Bee Kho tự kiểm tra đơn mới mỗi 5 giây khi đang mở.';
+  requestWakeLock();
+}
+</script></body></html>
