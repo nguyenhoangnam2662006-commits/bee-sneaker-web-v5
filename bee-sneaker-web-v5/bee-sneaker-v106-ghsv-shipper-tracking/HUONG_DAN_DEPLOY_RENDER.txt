@@ -1,0 +1,19 @@
+BEE SNEAKER V104 - BAN ZIP DE DUA LEN GITHUB/RENDER
+
+QUAN TRONG: File ZIP nay de package.json va server.js ngay cap dau, KHONG co thu muc bao ben ngoai.
+
+CAC BUOC CAP NHAT:
+1. Giai nen file ZIP tren may tinh.
+2. Mo thu muc vua giai nen, CHON CAC FILE VA THU MUC BEN TRONG (bao gom server.js, package.json, src, views, public, test...) va tai len thu muc GOC cua repository GitHub bee-sneaker-web-v5, ghi de cac file cu neu can.
+   KHONG chi tai file ZIP len GitHub; KHONG tai ca thu muc co ten (1), V104... vao trong mot thu muc khac.
+3. Tren GitHub, mo trang chinh cua repository va xac nhan ngay tai danh sach file co package.json va server.js (khong can mo thu muc con de tim 2 file nay).
+4. Render > bee-sneaker-web-v5 > Settings > Build > Root Directory: DE TRONG neu buoc 3 da dung.
+5. Build Command: npm install
+   Start Command: npm start
+   Branch: main
+6. Bam Save Changes; vao Deploys > Manual Deploy > Deploy latest commit. Cho trang thai Live.
+7. KHONG can thay doi GHSV_TOKEN, DATABASE_URL, GHSV_ROOM_BEARER hay cac Environment Variables khac.
+
+NEU ROOT DIRECTORY KHONG THE DE TRONG: GitHub cua ban van de package.json/server.js trong mot thu muc con; khi do Root Directory phai la DUONG DAN TU GOC REPO den thu muc chua package.json (khong them ten repository vao dau).
+
+BAN NAY CHI DONG GOI LAI V104 CHO DE DEPLOY, KHONG SUA DU LIEU/CO SO DU LIEU, KHONG BAO DAM API GHSV HET 401.

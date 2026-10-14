@@ -1,0 +1,19 @@
+<%- include('partials/header') %>
+<div class="panel">
+  <div class="panel-head"><div><h2>Quản lý CTV</h2><p>Xóa thành viên sẽ xóa tài khoản đăng nhập của CTV. Các đơn cũ vẫn giữ lại để tra cứu lịch sử.</p></div></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>CTV</th><th>SĐT / Tài khoản</th><th>Tổng đơn</th><th>Đơn hoàn</th><th>Tổng COD</th><th>Lãi thực nhận</th><th>Thao tác</th></tr></thead>
+    <tbody><% rows.forEach(r=>{ %><tr>
+      <td><b><%= r.full_name %></b></td>
+      <td><%= r.phone || r.username %></td>
+      <td><%= r.total_orders %></td><td><%= r.returned_orders %></td>
+      <td><b><%= Number(r.revenue).toLocaleString('vi-VN') %>đ</b></td>
+      <td><b><%= Number(r.profit).toLocaleString('vi-VN') %>đ</b></td>
+      <td><div class="action-row">
+        <a class="btn small" href="/ctv/<%= r.id %>/revenue">Đối soát</a><a class="btn small" href="/debt/<%= r.id %>">Công nợ Drop</a>
+        <form method="post" action="/ctv/<%= r.id %>/delete" onsubmit="return confirm('Xóa CTV này? Tài khoản sẽ bị xóa nhưng đơn cũ vẫn được giữ.')"><button class="btn danger small">Xóa thành viên</button></form>
+      </div></td>
+    </tr><% }) %></tbody>
+  </table></div>
+</div>
+<%- include('partials/footer') %>
